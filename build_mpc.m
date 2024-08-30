@@ -139,6 +139,11 @@ if isfield(opt,'terminal')
         end
 end
 
+% if any other constraints are given
+if isfield(opt.constraints,'extra')
+    g = [g; opt.constraints.extra];
+end
+
 % make the decision variable one column vector
 OPT_variables   = [reshape(X(:,1:end-1),opt.n_states*opt.N,1);
                     reshape(U,opt.n_controls*opt.N,1);];
@@ -183,6 +188,11 @@ if isfield(opt,'terminal')
     args.ubg(length(args.ubg)+1:length(args.ubg)+length(opt.terminal.set.b)) = 0; 
 end
 
+% if any constraint
+if isfield(opt.constraints,'extra')
+    args.lbg(length(args.ubg)+1:length(args.ubg)+length(opt.constraints.extra)) = -inf;
+    args.ubg(length(args.ubg)+1:length(args.ubg)+length(opt.constraints.extra)) = 0; 
+end
 
 % inequality constraints
 % bounds for the states variables
