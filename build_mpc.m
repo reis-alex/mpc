@@ -100,22 +100,22 @@ g           = [];
 g           = [g; X(:,1)-Init_states];                 
 
 % Determine the cost function to be used: simple quadratic or a custom
-if isfield(opt.stage.cost_function,'function')
-    stagecost_fun    = opt.stage.cost_function.function;
+if isfield(opt.costs.stage,'function')
+    stagecost_fun    = opt.costs.stage.function;
 else
-    stagecost_fun    = @(x,u,extra) x'*opt.cost_function.Q*x + u'*opt.cost_function.R*u + 0*extra;
+    stagecost_fun    = @(x,u,extra) x'*opt.costs.stage.Q*x + u'*opt.costs.stage.R*u + 0*extra;
 end
 
 % if the cost function requires extra variables (as optimization variables or not)
-if isfield(opt.stage.cost_function,'extra_parameters')
-    extra_parameters = opt.stage.cost_function.extra_parameters;
+if isfield(opt.costs.stage,'parameters')
+    stage_parameters = opt.costs.stage.parameters;
 else
-    extra_parameters = 0;
+    stage_parameters = 0;
 end
 
 % prediction loop
 for k = 1:opt.N
-    obj             = obj + stagecost_fun(X(:,k),U(:,k),extra_parameters);
+    obj             = obj + stagecost_fun(X(:,k),U(:,k),stage_parameters);
     state_next      = X(:,k+1);
     f_value         = f(X(:,k),U(:,k));
     st_next_euler   = integ(X(:,k),opt.dt,f_value);
@@ -123,52 +123,59 @@ for k = 1:opt.N
 end
 
 % if constraints in states are polyhedral
-if isfield(opt.constraints,'polyhedral')
+if isfield(opt,'constraints') && isfield(opt.constraints,'polyhedral')
     for i = 1:opt.N
         g = [g; opt.constraints.polyhedral.A*X(:,i)-opt.constraints.polyhedral.b];
     end
 end
 
-% if terminal costs and constraints
-if isfield(opt,'terminal')
-    obj = obj + opt.terminal.cost_function.function(X(:,end),opt.terminal.cost_function.extra_parameters);
-        if isfield(opt.terminal,'extra_parameters')
-                g   = [g; opt.terminal.set.A*vertcat(X(:,end),opt.terminal.extra_parameters)-opt.terminal.set.b];
-        else
-                g   = [g; opt.terminal.set.A*X(:,end)-opt.terminal.set.b];
-        end
+% if terminal costs and constraints A CORRIGIR
+if isfield(opt,'constraints') && isfield(opt.constraints,'terminal') && isfield(opt.constraints.terminal,'parameters')
+    g   = [g; opt.constraints.terminal.set.A*vertcat(X(:,end),opt.constraints.terminal.parameters)-opt.constraints.terminal.set.b];
+    obj = obj + opt.costs.terminal.function(X(:,end),opt.costs.terminal.parameters);
+else
+    g   = [g; opt.constraints.terminal.set.A*X(:,end)-opt.constraints.terminal.set.b];
+    obj = obj + opt.costs.terminal.function(X(:,end));
 end
 
-% if any other constraints are given
-if isfield(opt.constraints,'extra')
-    g = [g; opt.constraints.extra];
-end
 
+% % if there are constraints with external inputs (up to now, only matricial)
+% if isfield(opt,'input') && isfielf(opt.input,'matrix')
+%     for i = 1:opt.input.matrix.dim(2)
+%         matrix(:,i) = opt.input.matrix.matrix(1+(i-1)*opt.input.matrix.dim(1):i*opt.input.matrix.dim(1));
+%     end
+%     g = [g; matrix*]
+% end
+%% Define vector of decision variables
 % make the decision variable one column vector
 OPT_variables   = [reshape(X(:,1:end-1),opt.n_states*opt.N,1);
                     reshape(U,opt.n_controls*opt.N,1);];
                 
 % add terminal constraint variables to the list
-if isfield(opt,'terminal')
+if isfield(opt,'constraints') && isfield(opt.constraints,'terminal')
     OPT_variables = [OPT_variables;
                      reshape(X(:,end),opt.n_states,1)];
 end
 
 % add extra variables to the list
-if isfield(opt,'extra_parameters') && isfield(opt.extra_parameters,'constrained')
+if isfield(opt,'constraints') && isfield(opt.constraints,'parameters')
     OPT_variables   = [OPT_variables; 
-                       opt.extra_parameters.constrained];
+                       opt.constraints.parameters.variables];
 end
 
-% define external parameters and problem structure
+%% define external parameters and problem structure
 
-if isfield(opt,'extra_parameters') && isfield(opt.extra_parameters,'input')
-    Param = [Init_states; opt.extra_parameters.input];
-else
-    Param = [Init_states];
+Param = [Init_states];
+if isfield(opt,'input')
+    Param = [Param; opt.input.vector];
+    if isfield(opt.input,'matrix')
+        Param = [Param; opt.input.matrix.matrix];
+    end
 end
+
 OPC   = struct('f', obj, 'x', OPT_variables, 'g', g, 'p', Param);
 
+%% Constraints
 % define equality constraints 
 args = struct;
 
@@ -183,16 +190,11 @@ if isfield(opt.constraints,'polyhedral')
 end
 
 % if terminal constraint, inequality for Xf.A*(x(N),xa,ua)<=Xf.b
-if isfield(opt,'terminal')
-    args.lbg(length(args.ubg)+1:length(args.ubg)+length(opt.terminal.set.b)) = -inf;
-    args.ubg(length(args.ubg)+1:length(args.ubg)+length(opt.terminal.set.b)) = 0; 
+if isfield(opt.constraints,'terminal') && isfield(opt.constraints.terminal,'set') 
+    args.lbg(length(args.ubg)+1:length(args.ubg)+length(opt.constraints.terminal.set.b)) = -inf;
+    args.ubg(length(args.ubg)+1:length(args.ubg)+length(opt.constraints.terminal.set.b)) = 0; 
 end
 
-% if any constraint
-if isfield(opt.constraints,'extra')
-    args.lbg(length(args.ubg)+1:length(args.ubg)+length(opt.constraints.extra)) = -inf;
-    args.ubg(length(args.ubg)+1:length(args.ubg)+length(opt.constraints.extra)) = 0; 
-end
 
 % inequality constraints
 % bounds for the states variables
@@ -201,20 +203,33 @@ for k = 1:opt.n_states
         args.lbx(k:opt.n_states:opt.n_states*(opt.N),1) = -inf;
         args.ubx(k:opt.n_states:opt.n_states*(opt.N),1) = +inf;
     else
-        args.lbx(k:opt.n_states:opt.n_states*(opt.N),1) = opt.constraints.states.lower(k);
-        args.ubx(k:opt.n_states:opt.n_states*(opt.N),1) = opt.constraints.states.upper(k);
+        if isfield(opt.constraints,'states')
+            args.lbx(k:opt.n_states:opt.n_states*(opt.N),1) = opt.constraints.states.lower(k);
+            args.ubx(k:opt.n_states:opt.n_states*(opt.N),1) = opt.constraints.states.upper(k);
+        else
+            args.lbx(k:opt.n_states:opt.n_states*(opt.N),1) = -inf;
+            args.ubx(k:opt.n_states:opt.n_states*(opt.N),1) = +inf;
+        end
     end
 end
 
+
 % bounds for variables (controls)
-for k = 1:opt.n_controls
-    args.lbx(opt.n_states*opt.N+k:opt.n_controls:opt.n_states*opt.N+opt.n_controls*opt.N,1) = opt.constraints.control.lower(k);    
-    args.ubx(opt.n_states*opt.N+k:opt.n_controls:opt.n_states*opt.N+opt.n_controls*opt.N,1) = opt.constraints.control.upper(k);     
+if isfield(opt.constraints,'control')
+    for k = 1:opt.n_controls
+        args.lbx(opt.n_states*opt.N+k:opt.n_controls:opt.n_states*opt.N+opt.n_controls*opt.N,1) = opt.constraints.control.lower(k);
+        args.ubx(opt.n_states*opt.N+k:opt.n_controls:opt.n_states*opt.N+opt.n_controls*opt.N,1) = opt.constraints.control.upper(k);
+    end
+else
+    for k = 1:opt.n_controls
+        args.lbx(opt.n_states*opt.N+k:opt.n_controls:opt.n_states*opt.N+opt.n_controls*opt.N,1) = -inf;
+        args.ubx(opt.n_states*opt.N+k:opt.n_controls:opt.n_states*opt.N+opt.n_controls*opt.N,1) = +inf;
+    end
 end
 
 % bounds for variables (X(N))
-if isfield(opt,'terminal')
-    if isfield(opt.constraints,'polyhedral')
+if isfield(opt,'constraints') && isfield(opt.constraints,'terminal')
+    if isfield(opt.constraints.terminal,'set')
         args.ubx(length(args.ubx)+1:length(args.ubx)+opt.n_states) = +inf;
         args.lbx(length(args.lbx)+1:length(args.lbx)+opt.n_states) = -inf;
     else
@@ -225,9 +240,14 @@ if isfield(opt,'terminal')
 end
 
 % bounds for extra variables
-if isfield(opt,'extra_parameters') && isfield(opt.extra_parameters,'constrained')
-    args.ubx(length(args.ubx)+1:length(args.ubx)+length(opt.extra_parameters.constrained)) = opt.extra_parameters.constraints.upper;
-    args.lbx(length(args.lbx)+1:length(args.lbx)+length(opt.extra_parameters.constrained)) = opt.extra_parameters.constraints.lower;
+if isfield(opt,'constraints') && isfield(opt.constraints,'parameters')
+    if isfield(opt.constraints.parameters,'lower')
+        args.ubx(length(args.ubx)+1:length(args.ubx)+length(opt.constraints.parameters.variables)) = opt.constraints.parameters.upper;
+        args.lbx(length(args.lbx)+1:length(args.lbx)+length(opt.constraints.parameters.variables)) = opt.constraints.parameters.lower;
+    else
+        args.ubx(length(args.ubx)+1:length(args.ubx)+length(opt.constraints.parameters.variables)) = +inf;
+        args.lbx(length(args.lbx)+1:length(args.lbx)+length(opt.constraints.parameters.variables)) = -inf;
+    end
 end
 
 if (length(OPT_variables)~=length(args.lbx))
