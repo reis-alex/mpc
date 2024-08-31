@@ -16,11 +16,13 @@ The following lists the options possible (some are mandatory):
 
 Example:
 
-`
+```
+{
 opt.n_states   	= 2;
 opt.n_controls 	= 2;
 opt.model.type 	= 'nonlinear'
 opt.model.fun  	= @(x,u) [x(1)^2+u(1);x(2)^2+u(2)];
 opt.continuous_model.integration = 'euler';
 opt.dt		= 0.1;
-`
+}
+```
