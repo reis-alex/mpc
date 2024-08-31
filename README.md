@@ -15,10 +15,11 @@ The following lists the options possible (some are mandatory):
 ** If _opt.type = nonlinear_, the respective function, being a function handle, must be provided through _opt.model.fun_. Note that the independent variables must ordered as @(x,u).
 ** If the model described in _opt.model.fun_ is *continuous*, a field _opt.continuous_model_ is expected. This field contains_opt.continuous_model.integration_, which defines the integration scheme to be undertaken to cast the prediction and the options are "euler" and "RK4" (forth-order Runge Kutta), and _opt.dt_, which is the time step.
 Example:
-
+`
 opt.n_states   	= 2;
 opt.n_controls 	= 2;
 opt.model.type 	= 'nonlinear'
 opt.model.fun  	= @(x,u) [x(1)^2+u(1);x(2)^2+u(2)];
 opt.continuous_model.integration = 'euler';
 opt.dt		= 0.1;
+`
