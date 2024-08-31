@@ -31,8 +31,8 @@ opt.dt		= 0.1;
 
 These terms relate to state and control variables at each step over the prediction horizon (not at end-point, see *Terminal elements* below). The stage ingredients are to be provided through _opt.costs.stage_:
 
-* The stage cost function is provided through _opt.costs.terminal.function_, which takes a function handle as arguments. This handle takes arguments @(x,u,extra), where "extra" is mandatory even if no other variables is taken into account.
- * If no _opt.costs.terminal.function_ is provided, the simple linear-quadratic stage cost is considered. This one requires the weighting matrices _opt.costs.stage.Q_ and _opt.costs.stage.R_ as numerical matrices.
+* The stage cost function is provided through _opt.costs.stage.function_, which takes a function handle as arguments. This handle takes arguments @(x,u,extra), where "extra" is mandatory even if no other variables is taken into account.
+ * If no _opt.costs.stage.function_ is provided, the simple linear-quadratic stage cost is considered. This one requires the weighting matrices _opt.costs.stage.Q_ and _opt.costs.stage.R_ as numerical matrices.
  * If there are no extra parameters to be considered in the stage cost function, simply add `0*extra`.
 * If any other parameters (supposedly decison variables for the optimization problem) are considered in the stage cost function, it should be listed in the field _opt.costs.stage.parameters_.
 
