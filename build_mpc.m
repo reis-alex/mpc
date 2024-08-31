@@ -6,46 +6,66 @@
 %   opt.n_controls    : number of control inputs
 %   opt.N             : lenght of prediction horizon
 % 
-% Modeling:
+% * Modeling:
 % 
 %   opt.model.type  : either 'linear' or 'nonlinear';
 %   opt.model.A     : for 'model.type' = 'linear'
 %   opt.model.B     : for 'model.type' = 'linear
-%   opt.model.fun   : if 'model.type' = 'nonlinear', it must be a function handle with independent
-%                     variables ordered as @(x,u)
+%   opt.model.fun   : if 'model.type' = 'nonlinear', it must be a function
+%                     handle with independent variables ordered as @(x,u)
 %
-% Cost functions (stage and terminal):
-% 
-% opt.stage.cost_function.function: if a given stage cost function is given, it must be
-%                                   a function handle with variables named and ordered as (x,u,extra),
-%                                   where extra can be extra parameters used in the function
-% 
-% If no function is given, then V = x'*Q*x + u'*R*u is used, with
-% 
-% opt.stage.cost_function.Q/R = Q/R numerical matrices
-% opt.stage.cost_function.extra_parameters      : must contain the same variables
-%                                                 as used in "extra" in opt.stage.cost_function.function.
-% opt.terminal.cost_function.function           : if a given terminal cost function is given, it must be a 
-%                                                 function handle ordered as @(x,extra), where "extra" is 
-%                                                 an be extra parameters used in the function
-% opt.terminal.cost_function.extra_parameters   : must contain the same variables
-%                                                 as used in "extra" in opt.terminal.cost_function.function
-% opt.terminal.set.A/b                          : describes the (polyhedral) terminal set (Ax(N)<=b)
-% 
-% Parameters:
-% 
-% opt.extra_parameters.constrained              : list of parameters that are constrained
-% opt.extra_parameters.constraints.lower/upper  : lower/upper bound of such parameters
-% opt.extra_parameters.input                    : parameters that are input to the optimization
-% opt.constraints.states.lower/upper            : if constraints for states are given
-%                                                 point-wise, upper/lower
-% opt.constraints.control.upper/lower           : if constraints for controls are
-%                                                 given point-wisely, upper/lower
-% opt.constraints.polyhedral.A/b                : describes the (polyhedral) constraint set (Ax(k)<=b)
+% * Cost functions (stage and terminal): all costs are grouped within
+% opt.costs
 %
-% Solver selection:
+%   opt.costs.stage.function  : if a given stage cost function is given, it 
+%                               must be a function handle with variables named 
+%                               and ordered as (x,u,extra), where extra can be 
+%                               extra parameters used in the function.
+% 
+% If no specific function is given, then V = x'*Q*x + u'*R*u is used, with
+% opt.stage.cost_function.Q/R = Q/R being numerical matrices of proper
+% dimensions
+% 
+%   opt.costs.stage.parameters    : must contain the same variables
+%                                   as used in "extra" in opt.costs.stage.function.
+% 
+%   opt.costs.terminal.function   : if a given terminal cost function is given, it must be a 
+%                                   function handle ordered as @(x,extra), where "extra" are 
+%                                   extra parameters used in the function
+%   opt.costs.terminal.parameters : must contain the same variables
+%                                   as used in "extra" in opt.terminal.cost_function.function
+% 
+% * Constraints : all are grouped within opt.constraints 
+% 
+%   opt.constraints.states        : variable-wise bounds. Must contain fields
+%                                   "upper" and "lower" with proper dimensions.
+%   opt.constraints.polyhedral    : describes the (polyhedral) state
+%                                   constraint set. It must contain fields set.A and set.b.
+% 
+% If fields "states" or "polyhedral" are given, the states are considered
+% unconstrained.
+% 
+%   opt.constraints.control       : variable-wise bounds. Must contain fields
+%                                   "upper" and "lower" with proper dimensions.
+% 
+%   opt.constraints.terminal.set  : describes the (polyhedral) terminal set
+%                                   (Ax(N)<=b). It must contain fields set.A
+%                                   and set.b.
+% 
+%	opt.constraints.terminal.parameters : list of all variables that are
+%                                         terminally constrained.
+% 
+%   opt.constraints.parameters.variables : list of all extra variables that
+%                                          are constrained somehow.
+% 
+% * Parameters:
+% 
+%   opt.input.vector : list of parameters taken as input to the optimization
+%                       problem.
+% 
+% * Solver selection:
 %
-% opt.solver = 'ipopt' or 'qpoases'             : for general NLP and QP, respectively
+%   opt.solver = 'ipopt' or 'qpoases'    : for general NLP and QP, respectively
 
 %%
 function [solver,args] = build_mpc(opt)
