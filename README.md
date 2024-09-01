@@ -18,7 +18,7 @@ The following lists the options possible (some are mandatory):
 
 Example:
 
-```
+```matlab
 opt.n_states   	= 2;
 opt.n_controls 	= 2;
 opt.model.type 	= 'nonlinear'
