@@ -18,6 +18,12 @@ The following lists the options possible (some are mandatory):
 
 Example:
 
+Define the system
+$$
+\dot(x) = \begin{bmatrix} x_1^2+u_1 \\ x_2^2+u_2\end{bmatrix}
+$$
+and discretize it with a time step $dt=0.1$.
+
 ```matlab
 opt.n_states   	= 2;
 opt.n_controls 	= 2;
@@ -32,7 +38,7 @@ opt.dt		= 0.1;
 These terms relate to general constraints to be imposed to the optimization problem. All kinds of constraints are gathered in _opt.constraints_. The types of constraints supported are:
 
 * Varible-wise bounds, provided through _opt.constraints.states.upper_ and _opt.constraints.states.lower_ for states, and _opt.constraints.control.upper_ and _opt.constraints.control.lower_ for the control inputs. These bounds must be given as a vector of appropriate dimensions (_i.e._, _opt.n_states_ and _opt.n_controls_).
-* The state constraints can be polyhedral, _i.e._, *Ax\leq , and such an argument is to be provided through _opt.constraints.polyhedral_. This argument is expected to be composed of matrices $A$ and $b$.
+* The state constraints can be polyhedral, _i.e._, $Ax\leq b$, and such an argument is to be provided through _opt.constraints.polyhedral_. This argument is expected to be composed of matrices $A$ and $b$.
   * Note that _Polyhedron_ objects, as those created by the MPT toolbox, are acceptable.
 
 Terminal constraints (polyhedral or end-point) are possible, and should be provided through _opt.constraints.terminal_:
