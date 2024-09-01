@@ -19,8 +19,8 @@ The following lists the options possible (some are mandatory):
 Example:
 
 Define the system
-$\dot{x}_1x_1^2+u_1$ $\dot{x}_2 = x_2^2+u_2$
-and discretize it with a time step $dt=0.1$.
+$\dot{x}_1 = x_1^2+u_1 \dot{x}_2 = x_2^2+u_2$
+and discretize it, using first-order Euler, with a time step $dt=0.1$.
 
 ```matlab
 opt.n_states   	= 2;
