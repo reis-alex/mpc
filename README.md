@@ -19,9 +19,9 @@ The following lists the options possible (some are mandatory):
 Example:
 
 Define the system
-$$
+\[
 \dot(x) = \begin{bmatrix} x_1^2+u_1 \\ x_2^2+u_2\end{bmatrix}
-$$
+\]
 and discretize it with a time step $dt=0.1$.
 
 ```matlab
