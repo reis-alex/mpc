@@ -31,7 +31,7 @@ opt.dt		= 0.1;
 
 These terms relate to general constraints to be imposed to the optimization problem. All kinds of constraints are gathered in _opt.constraints_. The types of constraints supported are:
 
-* Varible-wise bounds, provided through _opt.constraints.states.upper_ and __opt.constraints.states.lower__ for states, and _opt.constraints.control.upper_ and __opt.constraints.control.lower for the control inputs. These bounds must be given as a vector of appropriate dimensions (_i.e._, _opt.n_states_ and _opt.n_controls_).
+* Varible-wise bounds, provided through _opt.constraints.states.upper_ and _opt.constraints.states.lower_ for states, and _opt.constraints.control.upper_ and _opt.constraints.control.lower_ for the control inputs. These bounds must be given as a vector of appropriate dimensions (_i.e._, _opt.n_states_ and _opt.n_controls_).
 * The state constraints can be polyhedral, _i.e._, *Ax\leq , and such an argument is to be provided through _opt.constraints.polyhedral_. This argument is expected to be composed of matrices $A$ and $b$.
   * Note that _Polyhedron_ objects, as those created by the MPT toolbox, are acceptable.
 
