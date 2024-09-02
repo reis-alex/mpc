@@ -36,8 +36,32 @@ opt.dt		= 0.1;
 These terms relate to general constraints to be imposed to the optimization problem. All kinds of constraints are gathered in _opt.constraints_. The types of constraints supported are:
 
 * Varible-wise bounds, provided through _opt.constraints.states.upper_ and _opt.constraints.states.lower_ for states, and _opt.constraints.control.upper_ and _opt.constraints.control.lower_ for the control inputs. These bounds must be given as a vector of appropriate dimensions (_i.e._, _opt.n_states_ and _opt.n_controls_).
+
+Example: Let $x\in\mathbb{R}^2$ and $u\in\mathbb{R}$. Define box-like constraints $\vert x_k\vert \leq 1$ and $\vert u_k\vert \leq 0.1$:
+
+```matlab
+opt.constraints.states.upper =  [1 1]; 
+opt.constraints.states.lower = -[1 1]; 
+opt.constraints.control.upper =  0.1;
+opt.constraints.control.lower = -0.1
+```
+
 * The state constraints can be polyhedral, _i.e._, $Ax\leq b$, and such an argument is to be provided through _opt.constraints.polyhedral_. This argument is expected to be composed of matrices $A$ and $b$.
   * Note that _Polyhedron_ objects, as those created by the MPT toolbox, are acceptable.
+
+Example: same as above, but with a polyhedral definition:
+
+```matlab
+A = vertcat(eye(opt.n_states),-eye(opt.n_states));
+b = ones(opt.n_states*2,1);
+opt.constraints.terminal.set.A = A;
+opt.constraints.terminal.set.b = b;
+```
+or, equivalently, if one uses the MPT toolbox (this might simplifying plotting the constraint set later):
+```matlab
+X = Polyhedron('A',vertcat(eye(opt.n_states),-eye(opt.n_states)),'b',ones(opt.n_states*2,1));
+opt.constraints.terminal.set = X;
+```
 
 Terminal constraints (polyhedral or end-point) are possible, and should be provided through _opt.constraints.terminal_:
 
@@ -51,7 +75,7 @@ If any other parameter/decision variable is to be constrained (not terminally), 
 These terms relate to state and control variables at each step over the prediction horizon (not at end-point, see *Terminal elements* below). The stage cost components are to be provided through _opt.costs.stage_:
 
 * The stage cost function is provided through _opt.costs.stage.function_, which takes a function handle as arguments. This handle takes arguments @(x,u,extra), where "extra" is mandatory even if no other variables is taken into account.
-  * If no _opt.costs.stage.function_ is provided, the simple linear-quadratic stage cost, _i.e._, $V(x_k) = \sum_{i=0}^N x_k^\top Q x_k + u_k^\top R u_k$, is considered. This one requires the weighting matrices _opt.costs.stage.Q_ and _opt.costs.stage.R_ as numerical matrices of proper dimensions.
+  * If no _opt.costs.stage.function_ is provided, the simple linear-quadratic stage cost, _i.e._, $V(x_k) = \sum_{k=0}^N x_k^\top Q x_k + u_k^\top R u_k$, is considered. This one requires the weighting matrices _opt.costs.stage.Q_ and _opt.costs.stage.R_ as numerical matrices of proper dimensions.
   * If there are no extra parameters to be considered in the stage cost function, simply add `0*extra`.
 * If any other parameters (supposedly decision variables for the optimization problem) are considered in the stage cost function, it should be listed in the field _opt.costs.stage.parameters_.
 
