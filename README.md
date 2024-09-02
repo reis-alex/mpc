@@ -84,7 +84,7 @@ Example: consider the classical linear-quadratic cost for tracking a constant re
 $$
 \begin{equation*}
 V(x_k,u_k) = \sum_{i=1}^N (x_k-p_k)^\top Q (x_k-p_k) + u_k^\top R u_k + 100*(x_k-\sigma)^2
-\end{equation}
+\end{equation*}
 $$
 ```matlab
 p_k = [10;10];
