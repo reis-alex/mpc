@@ -75,23 +75,23 @@ If any other parameter/decision variable is to be constrained (not terminally), 
 These terms relate to state and control variables at each step over the prediction horizon (not at end-point, see *Terminal elements* below). The stage cost components are to be provided through _opt.costs.stage_:
 
 * The stage cost function is provided through _opt.costs.stage.function_, which takes a function handle as arguments. This handle takes arguments @(x,u,extra), where "extra" is mandatory even if no other variables is taken into account.
-  * If no _opt.costs.stage.function_ is provided, the simple linear-quadratic stage cost, _i.e._, $V(x_k) = \sum_{k=0}^N x_k^\top Q x_k + u_k^\top R u_k$, is considered. This one requires the weighting matrices _opt.costs.stage.Q_ and _opt.costs.stage.R_ as numerical matrices of proper dimensions.
+  * If no _opt.costs.stage.function_ is provided, the simple linear-quadratic stage cost, _i.e._, $V(x_k) = \sum_{k=0}^{N-1} x_k^\top Q x_k + u_k^\top R u_k$, is considered. This one requires the weighting matrices _opt.costs.stage.Q_ and _opt.costs.stage.R_ as numerical matrices of proper dimensions.
   * If there are no extra parameters to be considered in the stage cost function, simply add `0*extra`.
 * If any other parameters (supposedly decision variables for the optimization problem) are considered in the stage cost function, it should be listed in the field _opt.costs.stage.parameters_.
 
-Example: consider the classical linear-quadratic cost for tracking a constant reference $p_k$ with a repulsion term regarding $\sigma$:
+Example: consider the classical linear-quadratic cost for tracking a constant reference $p$ with a repulsion term regarding $\sigma$:
 
 $$
 \begin{equation*}
-V(x_k,u_k) = \sum_{i=1}^N (x_k-p_k)^\top Q (x_k-p_k) + u_k^\top R u_k + 100*(x_k-\sigma)^2
+V(x_k,u_k) = \sum_{i=1}^{N-1} (x_k-p_k)^\top Q (x_k-p_k) + u_k^\top R u_k + 100*(x_k-\sigma)^2
 \end{equation*}
 $$
 ```matlab
-p_k = [10;10];
+p = [10;10];
 sigma = [5;5]; 
 Q = eye(opt.n_state);
 R = eye(opt.n_controls);
-opt.costs.stage.function = @(x,u,extra) (x-p_k)'*Q*(x-p_k) + u'*R*u + 100*(x_k-\sigma)^2 + extra*0;
+opt.costs.stage.function = @(x,u,extra) (x-p)'*Q*(x-p) + u'*R*u + 100*(x_k-\sigma)^2 + extra*0;
 ```
 ### Terminal costs
 
@@ -100,6 +100,14 @@ These terms relate to state and control variables at the end of the prediction h
 * The terminal cost function is provided through _opt.costs.terminal.function_, which takes a function handle as argument. This handle must take arguments @(x,u,extra), where "extra" are *optional*.
   *  _opt.costs.terminal.function_ is not mandatory.
 * If any parameters (other than state $x$) are considered in the terminal cost function, it must be listed in the filed _opt.costs.stage.parameters_
+
+Example: consider a terminal constraint to be $x_N\in\Omega$, where $\Omega$ is a polyhedral set described such as $\Omega.A*x(N)\leq \Omega.b$.
+
+```matlab
+opt.constraints.terminal.set.A = Omega.A;
+opt.constraints.terminal.set.b = Omega.b;
+```
+Note that it can be similarly done using a Polyhedron object (see Section _Constraints_ above).
 
 ### General constraints
 
