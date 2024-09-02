@@ -72,15 +72,16 @@ function [solver,args] = build_mpc(opt)
 import casadi.* 
 
 % check whether general constraints require inputs (vector or matrices)
-
+vararg_i = 1;
 if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'matrix')
-    input_matrix = SX.sym('input_vector',opt.input.general_constraints.matrix.dim(1),opt.input.general_constraints.matrix.dim(2));
-    opt.constraints.general.matrix = input_matrix;
+    input_matrix = SX.sym('input_matrix',opt.input.general_constraints.matrix.dim(1),opt.input.general_constraints.matrix.dim(2));
+    vararg{vararg_i} = input_matrix; %opt.constraints.general.matrix = input_matrix;
+    vararg_i = vararg_i + 1;
 end
 
 if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'vector')
-    input_vector = SX.sym('input_matrix',opt.input.general_constraints.vector.dim);
-    opt.constraints.general.vector = input_vector;
+    input_vector = SX.sym('input_vector',opt.input.general_constraints.vector.dim);
+    vararg{vararg_i} = input_vector;%opt.constraints.general.vector = input_vector;
 end
 
 %generate states and control vectors
@@ -177,7 +178,7 @@ end
 % if there are general constraints
 if isfield(opt,'constraints') && isfield(opt.constraints,'general')
     for i = 1:opt.N
-        g = [g; opt.constraints.general.function(X(:,i),opt.constraints.general.matrix,opt.constraints.general.vector)];
+        g = [g; opt.constraints.general.function(X(:,i),vararg{:})];
     end
 end
 %% Define vector of decision variables
