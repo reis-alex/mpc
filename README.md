@@ -114,3 +114,14 @@ Note that it can be similarly done using a Polyhedron object (see Section _Const
 These terms relate to general state and control constraints, which can be, for instance, a nonlinear function of the statem, or dependent on external parameters (therefore, time-varying).
 
 ### User inputs
+
+One can pass external inputs to the optimization problem through the option _opt.input.vector_. The only input which is coded by default is the initializing state for the prediction (the feedback value measured from the state). Note that the variables provided through this option *are not* decision variables, but should still be parsed as CasADi symbolic variables. 
+
+Example: consider a linear quadratic cost for tracking a given constant reference:
+
+```matlab
+opt.costs.stage.function = @(x,u,extra) (x-extra)'*Q*(x-extra) + u'*R*u;
+ref = SX.sym('ref',opt.n_states);
+opt.costs.stage.parameters = ref;
+opt.input.vector = ref;
+```
