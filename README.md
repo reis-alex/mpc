@@ -47,7 +47,7 @@ opt.constraints.control.lower = -0.1
 ```
 
 * The state constraints can be polyhedral, _i.e._, $Ax\leq b$, and such an argument is to be provided through _opt.constraints.polyhedral_. This argument is expected to be composed of matrices $A$ and $b$.
-  * Note that _Polyhedron_ objects, as those created by the MPT toolbox, are acceptable.
+  * Note that _Polyhedron_ objects, as those created by the [MPT3 toolbox](https://www.mpt3.org/), are acceptable.
 
 Example: same as above, but with a polyhedral definition:
 
@@ -57,7 +57,7 @@ b = ones(opt.n_states*2,1);
 opt.constraints.terminal.set.A = A;
 opt.constraints.terminal.set.b = b;
 ```
-or, equivalently, if one uses the MPT toolbox (this might simplifying plotting the constraint set later):
+or, equivalently, if one uses the [MPT3 toolbox](https://www.mpt3.org/) (this might simplifying plotting the constraint set later):
 ```matlab
 X = Polyhedron('A',vertcat(eye(opt.n_states),-eye(opt.n_states)),'b',ones(opt.n_states*2,1));
 opt.constraints.terminal.set = X;
