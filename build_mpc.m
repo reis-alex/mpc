@@ -8,11 +8,11 @@
 % 
 % * Modeling:
 % 
-%   opt.model.type  : either 'linear' or 'nonlinear';
-%   opt.model.A     : for 'model.type' = 'linear'
-%   opt.model.B     : for 'model.type' = 'linear
-%   opt.model.fun   : if 'model.type' = 'nonlinear', it must be a function
-%                     handle with independent variables ordered as @(x,u)
+%   opt.model.type     : either 'linear' or 'nonlinear';
+%   opt.model.A        : for 'model.type' = 'linear'
+%   opt.model.B        : for 'model.type' = 'linear
+%   opt.model.function : if 'model.type' = 'nonlinear', it must be a function
+%                        handle with independent variables ordered as @(x,u)
 %
 % * Cost functions (stage and terminal): all costs are grouped within
 % opt.costs
@@ -71,6 +71,18 @@
 function [solver,args] = build_mpc(opt)
 import casadi.* 
 
+% check whether general constraints require inputs (vector or matrices)
+
+if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'matrix')
+    input_matrix = SX.sym('input_vector',opt.input.general_constraints.matrix.dim(1),opt.input.general_constraints.matrix.dim(2));
+    opt.constraints.general.matrix = input_matrix;
+end
+
+if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'vector')
+    input_vector = SX.sym('input_matrix',opt.input.general_constraints.vector.dim);
+    opt.constraints.general.vector = input_vector;
+end
+
 %generate states and control vectors
 states = [];
 for i = 1:opt.n_states
@@ -87,8 +99,11 @@ switch opt.model.type
     case 'linear'
         model = opt.model.A*states + opt.model.B*controls;
     case 'nonlinear'
-        model = opt.model.fun(states);
+        model = opt.model.function(states);
 end
+
+%--- something that checks opt.n_states and opt.n_controls and the size
+% of A,B or opt.model.function 
 
 % if continuous model, select how to integration
 if isfield(opt,'continuous_model')
@@ -159,13 +174,12 @@ else
 end
 
 
-% % if there are constraints with external inputs (up to now, only matricial)
-% if isfield(opt,'input') && isfielf(opt.input,'matrix')
-%     for i = 1:opt.input.matrix.dim(2)
-%         matrix(:,i) = opt.input.matrix.matrix(1+(i-1)*opt.input.matrix.dim(1):i*opt.input.matrix.dim(1));
-%     end
-%     g = [g; matrix*]
-% end
+% if there are general constraints
+if isfield(opt,'constraints') && isfield(opt.constraints,'general')
+    for i = 1:opt.N
+        g = [g; opt.constraints.general.function(X(:,i),opt.constraints.general.matrix,opt.constraints.general.vector)];
+    end
+end
 %% Define vector of decision variables
 % make the decision variable one column vector
 OPT_variables   = [reshape(X(:,1:end-1),opt.n_states*opt.N,1);
@@ -187,9 +201,20 @@ end
 
 Param = [Init_states];
 if isfield(opt,'input')
-    Param = [Param; opt.input.vector];
-    if isfield(opt.input,'matrix')
-        Param = [Param; opt.input.matrix.matrix];
+    if isfield(opt.input,'vector')
+        Param = [Param; opt.input.vector];
+    end
+    
+    if isfield(opt.input.general_constraints,'matrix')
+        aux = [];
+        for jj = 1:opt.input.general_constraints.matrix.dim(2)
+            aux = [aux; input_matrix(:,jj)];
+        end
+        Param = [Param; aux];
+    end
+    
+    if isfield(opt.input.general_constraints,'vector')
+        Param = [Param; input_vector];
     end
 end
 
@@ -215,8 +240,13 @@ if isfield(opt.constraints,'terminal') && isfield(opt.constraints.terminal,'set'
     args.ubg(length(args.ubg)+1:length(args.ubg)+length(opt.constraints.terminal.set.b)) = 0; 
 end
 
+% if general constraints
+if isfield(opt.constraints,'general')
+    args.lbg(length(args.ubg)+1:length(args.ubg)+opt.N*opt.constraints.general.dim) = -inf;
+    args.ubg(length(args.ubg)+1:length(args.ubg)+opt.N*opt.constraints.general.dim) = 0;
+end
 
-% inequality constraints
+%% inequality constraints
 % bounds for the states variables
 for k = 1:opt.n_states
     if isfield(opt.constraints,'polyhedral')
@@ -284,11 +314,11 @@ switch opt.solver
         opts.print_time             = 0;
         opts.ipopt.acceptable_tol   = 1e-8;
         opts.ipopt.acceptable_obj_change_tol = 1e-8;
-        solver = nlpsol('solver', 'ipopt', OPC,opts);
+        solver = nlpsol('solver', 'ipopt',OPC,opts);
     case 'qpoases'
         options.terminationTolerance = 1e-5;
         options.boundTolerance = 1e-5;
         options.printLevel = 'none';
         options.error_on_fail = 0;
-        solver = qpsol('solver','qpoases', OPC,options);
+        solver = qpsol('solver','qpoases',OPC,options);
 end
