@@ -113,7 +113,7 @@ Note that it can be similarly done using a Polyhedron object (see Section _Const
 
 These options relate to general state and control constraints, which can be, for instance, a nonlinear function of the state, or dependent on external parameters (therefore, time-varying).
 
-Example: suppose $x\in\mathbb{R}^2$ and define a nonlinear constraint such as $x(1)^2 + x(2)^2 \leq 1$:
+Example: suppose $x\in\mathbb{R}^2$ and define a nonlinear constraint such as $x_1^2 + x_2^2 \leq 1$:
 
 ```matlab
 opt.constraints.general = @(x) x(1)^2+x(2)^2-1;
