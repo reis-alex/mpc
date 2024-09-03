@@ -15,6 +15,7 @@ x_{k+1}= \begin{bmatrix} 1 & 1 & 0 & 0 \\
 								  	  0 & 1 \end{bmatrix} u_k
 \end{equation*}
 $$
+
 subject to constraints $\vert x_k\vert5$ and $\vert u_k \vert\leq 0.1$. The following code declares the system, its constraints, and computes a LQR controller needed to define the invariant set for tracking.
 
 ```matlab
@@ -55,11 +56,11 @@ The following steps is to define the MPC problem. The prediction horizon is chos
 
 $$
 \begin{equation*}
-V(x_k,u_k,x_s,u_s) = (x_N-x_s)^\top P(x_N-x_s) + (x_s-r)^\top T(x_s-r) + \sum{k=0}^{N-1} (x_k-x_s)^\top Q(x_k-x_s) + (u_k-u_s)^\top R (u_k-u_s)
+V(x_k,u_k,x_s,u_s) = (x_N-x_s)^\top P(x_N-x_s) + (x_s-r)^\top T(x_s-r) + \sum_{k=0}^{N-1} (x_k-x_s)^\top Q(x_k-x_s) + (u_k-u_s)^\top R (u_k-u_s)
 \end{equation*}
 $$
 
-note that $x_s$ and $u_s$ are the artificial steady-states, and are decision variables appearing in both stage and terminal costs. Furthermore, the set $\Omega$ computed above constraints the terminal point of the prediction.
+where $Q$ and $R$ are user-defined matrices, and $P$ and $T$ are computed above. Note that $x_s$ and $u_s$ are the artificial steady-states, and are decision variables appearing in both stage and terminal costs. Furthermore, the set $\Omega$ computed above constraints the terminal point of the prediction.
 
 ```matlab
 T = 100*P;
