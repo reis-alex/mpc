@@ -5,12 +5,13 @@
 The routine _mpc_build_ is written to build a generic MPC formulation with CasADi. The input arguments are all (or, at least, most of) the possible configurations of an MPC problem. All the elements of such a configuration are to be passed under a structure of options. 
 
 1. [Modeling](#Modeling)
-2. [Constraints](#Constraints)
+2. Constraints
+	1. [General Constraints](#Constraints)
+	2. [General Constraints](#General-constraints)
 3. Costs
 	1. [Stage Costs](#Stage-costs)
 	2. [Terminal Costs](#Terminal-costs)
-5. [General Constraints](#General-constraints)
-6. [User Inputs](#User-inputs)
+4. [User Inputs](#User-inputs)
 
 Some examples are available.
 
@@ -82,6 +83,16 @@ Terminal constraints (polyhedral or end-point) are possible, and should be provi
 
 If any other parameter/decision variable is to be constrained (not terminally), there is an option _opt.constraints.parameters.variables_. A list of all constrained variables are expected. The corresponding bounds of such variables are expected in _opt.constraints.parameters.upper_ and _opt.constraints.parameters.lower_.
 
+### General constraints (*yet to be coded*)
+
+These options relate to general state and control constraints, which can be, for instance, a nonlinear function of the state, or dependent on external parameters (therefore, time-varying).
+
+Example: suppose $x\in\mathbb{R}^2$ and define a nonlinear constraint such as $x_1^2 + x_2^2 \leq 1$:
+
+```matlab
+opt.constraints.general = @(x) x(1)^2+x(2)^2-1;
+```
+
 
 ### Stage costs
 
@@ -122,16 +133,6 @@ opt.constraints.terminal.set.A = Omega.A;
 opt.constraints.terminal.set.b = Omega.b;
 ```
 Note that it can be similarly done using a Polyhedron object (see Section _Constraints_ above).
-
-### General constraints (*yet to be coded*)
-
-These options relate to general state and control constraints, which can be, for instance, a nonlinear function of the state, or dependent on external parameters (therefore, time-varying).
-
-Example: suppose $x\in\mathbb{R}^2$ and define a nonlinear constraint such as $x_1^2 + x_2^2 \leq 1$:
-
-```matlab
-opt.constraints.general = @(x) x(1)^2+x(2)^2-1;
-```
 
 
 ### User inputs
