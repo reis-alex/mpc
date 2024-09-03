@@ -6,6 +6,7 @@ Consider a simple discrete-time double-integrator, with position measurements:
 
 $$
 \begin{equation*}
+\begin{split}
 x_{k+1} &= \begin{bmatrix} 1 & 1 & 0 & 0 \\
 			 0 & 1 & 0 & 0 \\ 
 			 0 & 0 & 1 & 1 \\ 
@@ -15,6 +16,7 @@ x_{k+1} &= \begin{bmatrix} 1 & 1 & 0 & 0 \\
 								  	  0 & 1 \end{bmatrix} u_k \\
 C &= \begin{bmatrix} 1 & 0 & 0 & 0 \\
 		     0 & 0 & 1 & 0 \end{bmatrix}
+\endbegin{split}
 \end{equation*}
 $$
 
