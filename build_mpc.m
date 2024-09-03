@@ -70,7 +70,7 @@
 %%
 function [solver,args] = build_mpc(opt)
 import casadi.* 
-
+ 
 % check whether general constraints require inputs (vector or matrices)
 vararg_i = 1;
 if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'matrix')
@@ -82,6 +82,10 @@ end
 if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'vector')
     input_vector = SX.sym('input_vector',opt.input.general_constraints.vector.dim);
     vararg{vararg_i} = input_vector;%opt.constraints.general.vector = input_vector;
+end
+
+if isfield(opt.constraints,'general')
+    opt.constraints.general.dim  = length(opt.constraints.general.function(zeros(opt.n_states,1),vararg{:}));
 end
 
 %generate states and control vectors
@@ -206,7 +210,7 @@ if isfield(opt,'input')
         Param = [Param; opt.input.vector];
     end
     
-    if isfield(opt.input.general_constraints,'matrix')
+    if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'matrix')
         aux = [];
         for jj = 1:opt.input.general_constraints.matrix.dim(2)
             aux = [aux; input_matrix(:,jj)];
@@ -214,7 +218,7 @@ if isfield(opt,'input')
         Param = [Param; aux];
     end
     
-    if isfield(opt.input.general_constraints,'vector')
+    if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'vector')
         Param = [Param; input_vector];
     end
 end
@@ -317,8 +321,8 @@ switch opt.solver
         opts.ipopt.acceptable_obj_change_tol = 1e-8;
         solver = nlpsol('solver', 'ipopt',OPC,opts);
     case 'qpoases'
-        options.terminationTolerance = 1e-5;
-        options.boundTolerance = 1e-5;
+        options.terminationTolerance = 1e-8;
+        options.boundTolerance = 1e-8;
         options.printLevel = 'none';
         options.error_on_fail = 0;
         solver = qpsol('solver','qpoases',OPC,options);
