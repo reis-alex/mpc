@@ -82,6 +82,7 @@ Terminal constraints (polyhedral or end-point) are possible, and should be provi
 
 If any other parameter/decision variable is to be constrained (not terminally), there is an option _opt.constraints.parameters.variables_. A list of all constrained variables are expected. The corresponding bounds of such variables are expected in _opt.constraints.parameters.upper_ and _opt.constraints.parameters.lower_.
 
+
 ### Stage costs
 
 These terms relate to state and control variables at each step over the prediction horizon (not at end-point, see *Terminal elements* below). The stage cost components are to be provided through _opt.costs.stage_:
@@ -105,6 +106,7 @@ Q = eye(opt.n_state);
 R = eye(opt.n_controls);
 opt.costs.stage.function = @(x,u,extra) (x-p)'*Q*(x-p) + u'*R*u + 100*(x_k-\sigma)^2 + extra*0;
 ```
+
 ### Terminal costs
 
 These terms relate to state and control variables at the end of the prediction horizon (terminal point). The terminal ingredients are to be provided through _opt.costs.terminal_:
@@ -130,6 +132,7 @@ Example: suppose $x\in\mathbb{R}^2$ and define a nonlinear constraint such as $x
 ```matlab
 opt.constraints.general = @(x) x(1)^2+x(2)^2-1;
 ```
+
 
 ### User inputs
 
