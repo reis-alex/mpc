@@ -3,7 +3,10 @@
 ## Overview
 
 The routine _mpc_build_ is written to build a generic MPC formulation with CasADi. The input arguments are all (or, at least, most of) the possible configurations of an MPC problem. All the elements of such a configuration are to be passed under a structure of options. 
-<!-- TOC -->
+
+Some examples are available.
+
+1. [MPC for tracking linear systems using artificial references](https://github.com/reis-alex/mpc/blob/main/Example_Tracking.md):
 
 ## Options
 
