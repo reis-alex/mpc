@@ -15,7 +15,7 @@ x_{k+1}= \begin{bmatrix} 1 & 1 & 0 & 0 \\
 								  	  0 & 1 \end{bmatrix} u_k
 \end{equation*}
 $$
-
+subject to constraints $\vert x_k\vert5$ and $\vert u_k \vert\leq 0.1$. The following code declares the system, its constraints, and computes a LQR controller needed to define the invariant set for tracking.
 
 ```matlab
 %% Define system, constraint and invariant sets
@@ -33,7 +33,7 @@ R = eye(m);
 [K,P] = dlqr(A,B,Q,R); K=-K;
 
 x = sdpvar(n,1); u = sdpvar(m,1);
-xbound = 5; ubound = 0.1;
+xbound = 5; ubound = 0.2;
 Xc = Polyhedron('A',vertcat(eye(n),-eye(n)),'b',xbound*ones(2*n,1));
 Uc = Polyhedron('A',vertcat(eye(m),-eye(m)),'b',ubound*ones(2*m,1));
 Z  = Xc*Uc; Z.minHRep();
@@ -49,7 +49,19 @@ Aw =  LTISystem('A',Aw);
 Omega = Aw.invariantSet();
 Omega = Omega.intersect(ZMatrix);
 Omega.minHRep();
+```
 
+The following steps is to define the MPC problem. The prediction horizon is chosen as $N=10$, while an user-input reference is denoted $r$. The (stage+terminal) cost function is 
+
+$$
+\begin{equation*}
+V(x_k,u_k,x_s,u_s) = (x_N-x_s)^\top P(x_N-x_s) + (x_s-r)^\top T(x_s-r) + \sum{k=0}^{N-1} (x_k-x_s)^\top Q(x_k-x_s) + (u_k-u_s)^\top R (u_k-u_s)
+\end{equation*}
+$$
+
+note that $x_s$ and $u_s$ are the artificial steady-states, and are decision variables appearing in both stage and terminal costs. Furthermore, the set $\Omega$ computed above constraints the terminal point of the prediction.
+
+```matlab
 T = 100*P;
 %%
 opt.N           = 10;
@@ -61,7 +73,7 @@ opt.model.B     = B;
 
 xs = SX.sym('Xs',opt.n_states);
 us = SX.sym('Us',opt.n_controls);
-radius = 16;
+
 
 % Define costs
 opt.costs.stage.function = @(x,u,param) (x-param(1:opt.n_states))'*Q*(x-param(1:opt.n_states)) + ...
