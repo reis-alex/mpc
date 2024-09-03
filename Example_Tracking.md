@@ -14,7 +14,7 @@ x_{k+1} &= \begin{bmatrix} 1 & 1 & 0 & 0 \\
 									  1 & 0 \\
 									  0 & 0 \\
 								  	  0 & 1 \end{bmatrix} u_k \\
-y &= \begin{bmatrix} 1 & 0 & 0 & 0 \\
+y_k &= \begin{bmatrix} 1 & 0 & 0 & 0 \\
 		     0 & 0 & 1 & 0 \end{bmatrix}x_k
 \end{split}
 \end{equation*}
