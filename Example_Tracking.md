@@ -171,6 +171,6 @@ end
 
 The result is illustrated in the following figures:
 
-![Illustration of Limon's tracking MPC algorithm](https://github.com/reis-alex/mpc/blob/main/Figures/tracking_example.png)
+![Illustration of Limon's tracking MPC algorithm: states](https://github.com/reis-alex/mpc/blob/main/Figures/tracking_example.png)
 
-![Illustration of Limon's tracking MPC algorithm](https://github.com/reis-alex/mpc/blob/main/Figures/tracking_example_controls.png)
+![Illustration of Limon's tracking MPC algorithm: inputs](https://github.com/reis-alex/mpc/blob/main/Figures/tracking_example_control.png)
