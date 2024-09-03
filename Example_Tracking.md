@@ -4,7 +4,8 @@ This example implements a tracking MPC scheme for linear systems based on artifi
 
 Consider a simple discrete-time double-integrator:
 
-\[
+$$
+\begin{equation*}
 x_{k+1}= \begin{bmatrix} 1 & 1 & 0 & 0 \\
 			 0 & 1 & 0 & 0 \\ 
 			 0 & 0 & 1 & 1 \\ 
@@ -12,7 +13,8 @@ x_{k+1}= \begin{bmatrix} 1 & 1 & 0 & 0 \\
 									  1 & 0 \\
 									  0 & 0 \\
 								  	  0 & 1 \end{bmatrix} u_k
-\]
+\end{equation*}
+$$
 
 
 ```matlab
