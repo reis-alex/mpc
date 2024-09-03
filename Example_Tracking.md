@@ -16,7 +16,7 @@ x_{k+1} &= \begin{bmatrix} 1 & 1 & 0 & 0 \\
 								  	  0 & 1 \end{bmatrix} u_k \\
 C &= \begin{bmatrix} 1 & 0 & 0 & 0 \\
 		     0 & 0 & 1 & 0 \end{bmatrix}
-\endbegin{split}
+\end{split}
 \end{equation*}
 $$
 
