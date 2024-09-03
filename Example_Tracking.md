@@ -2,6 +2,13 @@
 
 This example implements a tracking MPC scheme for linear systems based on artificial references. 
 
+Consider a simple discrete-time double-integrator:
+
+$$
+x_{k+1}= \begin{bmatrix} 1 & 1 & 0 & 0\\ 0 & 1 & 0 & 0 \\ 0 & 0 & 1 & 1 \\ 0 & 0 & 0 & 1 \end{bmatrix}x_k + \begin{bmatrix}0 & 0 \\ 1 & 0 \\ 0 & 0 \\ 0 & 1\end{bmatrix}u_k
+$$
+
+
 ```matlab
 %% Define system, constraint and invariant sets
 
@@ -22,6 +29,7 @@ xbound = 5; ubound = 0.1;
 Xc = Polyhedron('A',vertcat(eye(n),-eye(n)),'b',xbound*ones(2*n,1));
 Uc = Polyhedron('A',vertcat(eye(m),-eye(m)),'b',ubound*ones(2*m,1));
 Z  = Xc*Uc; Z.minHRep();
+
 
 ZMatrix = [eye(n) zeros(n) zeros(n,m); K -K eye(m);...
           zeros(n) eye(n) zeros(n,m); zeros(m,n) zeros(m,n) eye(m)];
@@ -49,14 +57,12 @@ radius = 16;
 
 % Define costs
 opt.costs.stage.function = @(x,u,param) (x-param(1:opt.n_states))'*Q*(x-param(1:opt.n_states)) + ...
-                                         (u-param(opt.n_states+1:end))'*R*(u-param(opt.n_states+1:end)) + ...
-                                         + 1000*max([0, -((C*x)'*eye(2)*(C*x)-radius)])^2;
+                                         (u-param(opt.n_states+1:end))'*R*(u-param(opt.n_states+1:end));
 opt.costs.stage.parameters = [xs;us];
 
 ref = SX.sym('Ref',opt.n_states);
 opt.costs.terminal.function = @(x,param) (x-param(1:opt.n_states))'*P*(x-param(1:opt.n_states)) + ...
-                                           (param(1:opt.n_states)-param(opt.n_states+1:end))'*T*(param(1:opt.n_states)-param(opt.n_states+1:end)) + ...
-                                           + 1000*max([0, -((C*param(1:opt.n_states))'*eye(2)*(C*param(1:opt.n_states))-radius)])^2;
+                                           (param(1:opt.n_states)-param(opt.n_states+1:end))'*T*(param(1:opt.n_states)-param(opt.n_states+1:end));
 opt.costs.terminal.parameters = [xs;ref];
 
 %% Define constraints
@@ -77,5 +83,7 @@ opt.input.vector = ref;
 
 %% Define the solver and generate it
 opt.solver = 'ipopt';
+tic
 [solver,args] = build_mpc(opt);
+toc
 ```
