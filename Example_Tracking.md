@@ -57,7 +57,7 @@ Omega.minHRep();
 T = 100*P;
 ```
 
-The following steps is to define the MPC problem. The prediction horizon is chosen as $N=10$, while an user-input reference is denoted $r$. The (stage+terminal) cost function is 
+The following steps are to define the MPC problem. The prediction horizon is $N=10$, while a user-input reference is denoted $r$. The (stage+terminal) cost function is 
 
 $$
 \begin{equation*}
@@ -168,3 +168,7 @@ for t = 1:tmax
 end
 
 ```
+
+The result is illustrated in the following figure:
+
+![Illustration of Limon's tracking MPC algorithm](https://github.com/reis-alex/mpc/blob/main/Figures/tracking_example.png)
