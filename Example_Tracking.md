@@ -37,7 +37,6 @@ Q = eye(n);
 R = eye(m);
 [K,P] = dlqr(A,B,Q,R); K=-K;
 
-x = sdpvar(n,1); u = sdpvar(m,1);
 xbound = 5; ubound = 0.2;
 Xc = Polyhedron('A',vertcat(eye(n),-eye(n)),'b',xbound*ones(2*n,1));
 Uc = Polyhedron('A',vertcat(eye(m),-eye(m)),'b',ubound*ones(2*m,1));
