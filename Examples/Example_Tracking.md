@@ -4,6 +4,8 @@ This example implements a tracking MPC scheme for linear systems based on artifi
 
 Consider a simple discrete-time double-integrator, with position measurements:
 
+*Note:* in the following code, we use the _Polyhedron_ function from [MPT3 toolbox](https://www.mpt3.org/).
+
 $$
 \begin{equation*}
 \begin{split}
