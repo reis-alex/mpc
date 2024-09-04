@@ -21,7 +21,7 @@ a2 = 0.2; %N.s/m
 % State space model
 
 A=[[            0,     1,      0,     0];
-    [-(k1 + k2)/m1, -a1/m1,  k2/m1,  a2/m1];
+    [-(k1 + k2)/m1, -a2/m1,  k2/m1,  a2/m1];
     [            0,     0,      0,     1];
     [        k2/m2,  a2/m2, -k2/m2, -a2/m2]];
 
@@ -30,8 +30,8 @@ C = [[ 1,0,    0,0];
      [ 0,0,    1,0]];
 D=0;
 Ts = 1;
-sys = c2d(ss(A,B,C,D),Ts);
-[A,B,C,D] = ssdata(sys);
+ sys = c2d(ss(A,B,C,D),Ts);
+ [A,B,C,D] = ssdata(sys);
 
 [p,~] = size(C);
 [n,m] = size(B);
@@ -41,7 +41,7 @@ R = eye(m);
 [K,P] = dlqr(A,B,Q,R); K=-K;
 
 %x = sdpvar(n,1); u = sdpvar(m,1);
-xbound = 5; ubound = 1000;
+xbound = 100; ubound = 1000;
 Xc = Polyhedron('A',vertcat(eye(n),-eye(n)),'b',xbound*ones(2*n,1));
 Uc = Polyhedron('A',vertcat(eye(m),-eye(m)),'b',ubound*ones(2*m,1));
 Z  = Xc*Uc; Z.minHRep();
@@ -53,7 +53,7 @@ ZMatrix = Polyhedron('A',blkdiag(Z.A,Z.A)*ZMatrix,'b',vertcat(Z.b,0.99*Z.b));
 
 Aw = [A+B*K -B*K B; zeros(n) eye(n) zeros(n,m); zeros(m,n) zeros(m,n) eye(m)];
 
-Aw =  LTISystem('A',Aw,'Ts',Ts);
+Aw =  LTISystem('A',Aw);
 Omega = Aw.invariantSet();
 Omega = Omega.intersect(ZMatrix);
 Omega.minHRep();
@@ -68,6 +68,7 @@ opt.model.B     = B;
 
 xs = SX.sym('Xs',opt.n_states);
 us = SX.sym('Us',opt.n_controls);
+
 
 % Define costs
 opt.costs.stage.function = @(x,u,param) (x-param(1:opt.n_states))'*Q*(x-param(1:opt.n_states)) + ...
@@ -114,7 +115,7 @@ args.x0 = [X0;reshape(u0',opt.N,1);zeros(opt.n_states,1);zeros(opt.n_states,1);z
 for t = 1:tmax
 
     % if t<=50
-        yref = [5;5];
+        yref = [5;-5];
     % end
     % if t>50 && t<=100
         % yref = [-5;0];
@@ -137,7 +138,10 @@ for t = 1:tmax
     sol = solver('x0', args.x0, 'lbx', args.lbx, 'ubx', args.ubx,'lbg', args.lbg, 'ubg', args.ubg,'p',args.p);
 
     % get control sequence from MPC
-    u(:,t) = full(sol.x(opt.n_states*opt.N+1));
+    for i = 0:opt.N
+        usol(:,i+1) = full(sol.x(opt.n_states*opt.N+1+i*opt.n_controls:opt.n_states*opt.N+i*opt.n_controls+1))';
+    end
+    u(:,t) = usol(:,1);
 
     % get artificial reference
     ya(:,t) = C*reshape(full(sol.x(opt.N*opt.n_states+opt.N*opt.n_controls+opt.n_states+1:opt.N*opt.n_states+opt.N*opt.n_controls+2*opt.n_states)),opt.n_states,1);
@@ -150,6 +154,6 @@ end
 
 
 figure
-stairs(1:tmax+1,xsimu(1,:));
+plot(1:tmax+1,xsimu(1,:));
 hold on
-stairs(1:tmax+1,xsimu(3,:));
+plot(1:tmax+1,xsimu(3,:));
