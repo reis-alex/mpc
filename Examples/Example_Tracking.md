@@ -37,7 +37,6 @@ Q = eye(n);
 R = eye(m);
 [K,P] = dlqr(A,B,Q,R); K=-K;
 
-x = sdpvar(n,1); u = sdpvar(m,1);
 xbound = 5; ubound = 0.2;
 Xc = Polyhedron('A',vertcat(eye(n),-eye(n)),'b',xbound*ones(2*n,1));
 Uc = Polyhedron('A',vertcat(eye(m),-eye(m)),'b',ubound*ones(2*m,1));
@@ -68,6 +67,7 @@ $$
 where $Q$ and $R$ are user-defined matrices, and $P$ and $T$ are computed above. Note that $x_s$ and $u_s$ are the artificial steady-states, and are decision variables appearing in both stage and terminal costs. Furthermore, the set $\Omega$ computed above constraints the terminal point of the prediction.
 
 ```matlab
+import casadi.*
 %% Define MPC
 opt.N           = 10;
 opt.n_controls  = m;
