@@ -3,9 +3,6 @@
 This example implements a tracking MPC scheme for linear systems based on artificial references. 
 
 Consider a simple discrete-time double-integrator, with position measurements:
-
-*Note:* in the following code, we use the _Polyhedron_ function from [MPT3 toolbox](https://www.mpt3.org/).
-
 $$
 \begin{equation*}
 \begin{split}
@@ -23,6 +20,9 @@ y_k &= \begin{bmatrix} 1 & 0 & 0 & 0 \\
 $$
 
 subject to constraints $\vert x_k\vert5$ and $\vert u_k \vert\leq 0.1$. The following code declares the system, its constraints, and computes a LQR controller needed to define the invariant set for tracking.
+
+
+*Note:* in the following code, we use the _Polyhedron_ function from [MPT3 toolbox](https://www.mpt3.org/).
 
 ```matlab
 %% Define system, constraint and invariant sets
