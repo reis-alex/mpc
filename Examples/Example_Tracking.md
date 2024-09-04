@@ -3,6 +3,7 @@
 This example implements a tracking MPC scheme for linear systems based on artificial references. 
 
 Consider a simple discrete-time double-integrator, with position measurements:
+
 $$
 \begin{equation*}
 \begin{split}
