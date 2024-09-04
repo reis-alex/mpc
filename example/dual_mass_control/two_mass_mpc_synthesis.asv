@@ -26,12 +26,8 @@ A=[[            0,     1,      0,     0];
     [        k2/m2,  a2/m2, -k2/m2, -a2/m2]];
 
 B = [ 0 k1/m1 0 0].';
-C = [[ 1,0,    0,0];
-     [ 0,0,    1,0]];
+C = [ 0,0,    1,0];
 D=0;
-Ts = 1;
- sys = c2d(ss(A,B,C,D),Ts);
- [A,B,C,D] = ssdata(sys);
 
 [p,~] = size(C);
 [n,m] = size(B);
@@ -41,7 +37,7 @@ R = eye(m);
 [K,P] = dlqr(A,B,Q,R); K=-K;
 
 %x = sdpvar(n,1); u = sdpvar(m,1);
-xbound = 100; ubound = 1000;
+xbound = 5; ubound = 0.2;
 Xc = Polyhedron('A',vertcat(eye(n),-eye(n)),'b',xbound*ones(2*n,1));
 Uc = Polyhedron('A',vertcat(eye(m),-eye(m)),'b',ubound*ones(2*m,1));
 Z  = Xc*Uc; Z.minHRep();
@@ -87,8 +83,8 @@ opt.constraints.terminal.parameters = [xs;us];
 
 % control and state constraints
 opt.constraints.polyhedral = Xc;
-opt.constraints.control.upper = [ubound ubound];
-opt.constraints.control.lower = [-ubound -ubound];
+opt.constraints.control.upper = [0.2 0.2];
+opt.constraints.control.lower = [-0.2 -0.2];
 
 % constraint on parameters
 opt.constraints.parameters.variables = [xs;us];
@@ -114,18 +110,18 @@ args.x0 = [X0;reshape(u0',opt.N,1);zeros(opt.n_states,1);zeros(opt.n_states,1);z
 
 for t = 1:tmax
 
-    % if t<=50
+    if t<=50
         yref = [5;-5];
-    % end
-    % if t>50 && t<=100
-        % yref = [-5;0];
-    % end
-    % if t>100 && t<=150
-        % yref = [2;1];
-    % end
-    % if t>150 && t<=200
-        % yref = [-5;-5];
-    % end
+    end
+    if t>50 && t<=100
+        yref = [-5;0];
+    end
+    if t>100 && t<=150
+        yref = [2;1];
+    end
+    if t>150 && t<=200
+        yref = [-5;-5];
+    end
     refsimu(:,t) = yref;
 
     xs = pinv([A-eye(n) B; C zeros(p,m)])*[zeros(n,1);yref];
@@ -139,7 +135,7 @@ for t = 1:tmax
 
     % get control sequence from MPC
     for i = 0:opt.N
-        usol(:,i+1) = full(sol.x(opt.n_states*opt.N+1+i*opt.n_controls:opt.n_states*opt.N+i*opt.n_controls+1))';
+        usol(:,i+1) = full(sol.x(opt.n_states*opt.N+1+i*opt.n_controls:opt.n_states*opt.N+i*opt.n_controls+2))';
     end
     u(:,t) = usol(:,1);
 
