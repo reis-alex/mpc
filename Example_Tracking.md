@@ -67,6 +67,7 @@ $$
 where $Q$ and $R$ are user-defined matrices, and $P$ and $T$ are computed above. Note that $x_s$ and $u_s$ are the artificial steady-states, and are decision variables appearing in both stage and terminal costs. Furthermore, the set $\Omega$ computed above constraints the terminal point of the prediction.
 
 ```matlab
+import casadi.*
 %% Define MPC
 opt.N           = 10;
 opt.n_controls  = m;
