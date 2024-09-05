@@ -39,7 +39,7 @@ Q = eye(n);
 R = eye(m);
 [K,P] = dlqr(A,B,Q,R); K=-K;
 
-xbound = 5; ubound = 10;
+xbound = 100; ubound = 100;
 Xc = Polyhedron('A',vertcat(eye(n),-eye(n)),'b',xbound*ones(2*n,1));
 Uc = Polyhedron('A',vertcat(eye(m),-eye(m)),'b',ubound*ones(2*m,1));
 Z  = Xc*Uc; Z.minHRep();
