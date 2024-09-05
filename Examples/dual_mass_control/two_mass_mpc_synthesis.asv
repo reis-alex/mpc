@@ -25,8 +25,8 @@ A=[[            0,     1,      0,     0];
     [        k2/m2,  a2/m2, -k2/m2, -a2/m2]];
 
 B = [ 0 k1/m1 0 0].';
-C = [[ 1,0,    0,0]];
-%      [ 0,0,    1,0]];
+C = [[ 1,0,    0,0];
+     [ 0,0,    1,0]];
 D=0;
 Ts = 1;
 sys = c2d(ss(A,B,C,D),Ts);
@@ -71,13 +71,12 @@ us = SX.sym('Us',opt.n_controls);
 % Define costs
 opt.costs.stage.function = @(x,u,param) (x-param(1:opt.n_states))'*Q*(x-param(1:opt.n_states)) + ...
                                          (u-param(opt.n_states+1:end))'*R*(u-param(opt.n_states+1:end)) + ... 
-                                         + 1000000*max(x(4)^2-1,0)^2;
+                                         + 1/((1-x(4))^2);
 opt.costs.stage.parameters = [xs;us];
 
 ref = SX.sym('Ref',opt.n_states);
 opt.costs.terminal.function = @(x,param) (x-param(1:opt.n_states))'*P*(x-param(1:opt.n_states)) + ...
-                                           (param(1:opt.n_states)-param(opt.n_states+1:end))'*T*(param(1:opt.n_states)-param(opt.n_states+1:end)) + ...
-                                           + 1000000*max(param(4)^2-1,0)^2;
+                                           (param(1:opt.n_states)-param(opt.n_states+1:end))'*T*(param(1:opt.n_states)-param(opt.n_states+1:end));
 opt.costs.terminal.parameters = [xs;ref];
 
 %% Define constraints
@@ -103,10 +102,10 @@ opt.solver = 'ipopt';
 %% Simulation loop
 tmax = 200;
 
-x0 = [0;0;0;0];                     % initial condition.
-xsimu(:,1) = x0;                    % xsimu contains the history of states
-u0 = zeros(m,opt.N);                % two control inputs for each robot
-X0 = zeros(opt.n_states*opt.N,1);   % initialization of the states decision variables
+x0 = [0;0;0;0];            % initial condition.
+xsimu(:,1) = x0;            % xsimu contains the history of states
+u0 = zeros(m,opt.N);            % two control inputs for each robot
+X0 = zeros(opt.n_states*opt.N,1);      % initialization of the states decision variables
 
 % Intialize MPC
 u = [];
@@ -114,7 +113,18 @@ args.x0 = [X0;reshape(u0',opt.N,1);zeros(opt.n_states,1);zeros(opt.n_states,1);z
 
 for t = 1:tmax
 
-    yref = 1+0.1*t*sind(20*t);
+    % if t<=50
+        yref = [5;5];
+    % end
+    % if t>50 && t<=100
+        % yref = [-5;0];
+    % end
+    % if t>100 && t<=150
+        % yref = [2;1];
+    % end
+    % if t>150 && t<=200
+        % yref = [-5;-5];
+    % end
     refsimu(:,t) = yref;
 
     xs = pinv([A-eye(n) B; C zeros(p,m)])*[zeros(n,1);yref];
@@ -140,9 +150,9 @@ end
 
 
 figure
-stairs(1:tmax+1,xsimu(1,:),'--r');
+stairs(1:tmax+1,xsimu(1,:));
 hold on
-stairs(1:tmax,refsimu,'b');
+stairs(1:tmax+1,xsimu(3,:));
 
 figure
 stairs(xsimu(4,:))
