@@ -78,16 +78,14 @@ opt.model.B     = B;
 % Define costs
 opt.costs.stage.function = @(x,u,param) (x-param(1:opt.n_states))'*Q*(x-param(1:opt.n_states)) + ...
                                          (u-param(opt.n_states+1:end))'*R*(u-param(opt.n_states+1:end)) + ...
-                                         ...%1000*((m2*x(1)^2*x(4)-1))^2;
-                                         + 1000000*max(((param(4)-0.02))^2,0)^2; % + 1/norm([m2_f*param(4)^2-0.5]);                                        
+                                         + 1000000*max(norm(m2*x(1)^2*x(4))-30,0)^2;                                      
                                          
 opt.costs.stage.parameters = [xs;us];
 
 ref = SX.sym('Ref',opt.n_states);
 opt.costs.terminal.function = @(x,param) (x-param(1:opt.n_states))'*P*(x-param(1:opt.n_states)) + ...
                                            (param(1:opt.n_states)-param(opt.n_states+1:end))'*T*(param(1:opt.n_states)-param(opt.n_states+1:end)) + ...
-                                           ...%1000*((m2*x(1)^2*x(4)-1))^2;
-                                            + 1000000*max((param(4)-0.02)^2 ,0)^2; %+ 1/norm([m2_f*param(4)^2-0.5]);
+                                            + 1000000*max(norm(m2*x(1)^2*x(4))-30,0)^2;
                                                                                      
 opt.costs.terminal.parameters = [xs;ref];
 
@@ -139,6 +137,7 @@ for t = 1:tmax
 
     sol = solver('x0', args.x0, 'lbx', args.lbx, 'ubx', args.ubx,'lbg', args.lbg, 'ubg', args.ubg,'p',args.p);
     cost_out(:,t) = full(sol.f);
+
     % get control sequence from MPC
     u(:,t) = full(sol.x(opt.n_states*opt.N+1));
 
@@ -146,27 +145,21 @@ for t = 1:tmax
     ya(:,t) = C*reshape(full(sol.x(opt.N*opt.n_states+opt.N*opt.n_controls+opt.n_states+1:opt.N*opt.n_states+opt.N*opt.n_controls+2*opt.n_states)),opt.n_states,1);
 
     xsimu(:,t+1) = A*xsimu(:,t) + B*u(:,t);
-    ctr_val(:,t)  = (m2*((xsimu(1,t))^2))*xsimu(4,t);
     y(:,t) = C*xsimu(:,t);
-%     X0 = full(sol.x(1:N*n_states));
+
+    constraint(:,t) = m2*xsimu(1,t)^2*xsimu(4,t);
+
     args.x0 = full(sol.x); 
 end
-
+%%
 t_vec = 0:tmax;
 
-plot_datas(t_vec, xsimu);
-figure()
-plot(xsimu(4,:), 'g-')
-figure()
-plot(1:tmax,cost_out, 'g')
 figure
-plot(Xc.projection([1 3]))
+plot(xsimu(4,:), 'g-')
+hold on
+stairs(constraint,'--b')
+
 figure
 stairs(1:tmax+1,xsimu(1,:),'r');
 hold on
-
 stairs(1:tmax,refsimu,'--b');
-legend()
-
-figure
-plot(xsimu(4,:))
