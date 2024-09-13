@@ -18,17 +18,17 @@ a2 = 0.2; %N.s/m
 
 % State space model
 
-A=[[            0,     1,      0,     0];
+Ac=[[            0,     1,      0,     0];
     [-(k1 + k2)/m1, -a1/m1,  k2/m1,  a2/m1];
     [            0,     0,      0,     1];
     [        k2/m2,  a2/m2, -k2/m2, -a2/m2]];
 
-B = [ 0 k1/m1 0 0].';
-C = [ 1,0,    0,0];
+Bc = [ 0 k1/m1 0 0].';
+Cc = eye(4);
+Dc = 0;
 
-D=0;
 Ts = 1;
-sys = c2d(ss(A,B,C,D),Ts);
+sys = c2d(ss(Ac,Bc,Cc,Dc),Ts);
 [A,B,C,D] = ssdata(sys);
 
 [p,~] = size(C);
@@ -60,7 +60,7 @@ T = 100*P;
 
 
 
-opt.N           = 10;
+opt.N           = 5;
 opt.n_controls  = m;
 opt.n_states    = n;
 opt.model.type	= 'linear';
@@ -128,7 +128,7 @@ for t = 1:tmax
     yref = 5*sind(1*t);
     refsimu(:,t) = yref;
 
-    xs = pinv([A-eye(n) B; C zeros(p,m)])*[zeros(n,1);yref];
+    xs = pinv([A-eye(n) B; [1 0 0 0] zeros(1,m)])*[zeros(n,1);yref];
 
     % set the values of the parameters vector
     args.p = [xsimu(:,t);xs(1:opt.n_states)];                                              
