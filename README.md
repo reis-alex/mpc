@@ -87,13 +87,13 @@ If any other parameter/decision variable is to be constrained (not terminally), 
 
 These options relate to general state and control constraints, which can be, for instance, a nonlinear function of the state, or dependent on external parameters (therefore, time-varying).
 
-Example (non-linear constraint): suppose $x\in\mathbb{R}^2$ and define a nonlinear constraint such as $x_1^2 + x_2^2 \leq 1$:
+*Example* (non-linear constraint): suppose $x\in\mathbb{R}^2$ and define a nonlinear constraint such as $x_1^2 + x_2^2 \leq 1$:
 
 ```matlab
 opt.constraints.general = @(x) x(1)^2+x(2)^2-1;
 ```
 
-Example (constraint dependent on external parameters): suppose $x\in\mathbb{R}^2$ and that the state is to be constrained by a polyhedral set that is updated with time, _e.g._, $A(k)x\leq b(k)$. 
+*Example* (constraint dependent on external parameters): suppose $x\in\mathbb{R}^2$ (```opt.n_states=2```) and that the state is to be constrained by a polyhedral set that is updated with time, _e.g._, $A(k)x\leq b(k)$. 
 
 First, since the inputs ($A$ and $b$) are exclusively used in the general constraint, one should declare it as such. Clearly, since the MPC solver will not be updated afterwards, these input parameters have *fixed dimensions*, which we consider $10$ in this example:
 
