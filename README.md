@@ -83,16 +83,41 @@ Terminal constraints (polyhedral or end-point) are possible, and should be provi
 
 If any other parameter/decision variable is to be constrained (not terminally), there is an option _opt.constraints.parameters.variables_. A list of all constrained variables are expected. The corresponding bounds of such variables are expected in _opt.constraints.parameters.upper_ and _opt.constraints.parameters.lower_.
 
-### General constraints (*yet to be coded*)
+### General constraints
 
 These options relate to general state and control constraints, which can be, for instance, a nonlinear function of the state, or dependent on external parameters (therefore, time-varying).
 
-Example: suppose $x\in\mathbb{R}^2$ and define a nonlinear constraint such as $x_1^2 + x_2^2 \leq 1$:
+Example (non-linear constraint): suppose $x\in\mathbb{R}^2$ and define a nonlinear constraint such as $x_1^2 + x_2^2 \leq 1$:
 
 ```matlab
 opt.constraints.general = @(x) x(1)^2+x(2)^2-1;
 ```
 
+Example (constraint dependent on external parameters): suppose $x\in\mathbb{R}^2$ and that the state is to be constrained by a polyhedral set that is updated with time, _e.g._, $A(k)x\leq b(k)$. 
+
+First, since the inputs ($A$ and $b$) are exclusively used in the general constraint, one should declare it as such. Clearly, since the MPC solver will not be updated afterwards, these input parameters have *fixed dimensions*, which we consider $10$ in this example:
+
+```matlab
+n_rows = 10;
+opt.input.general_constraints.vector.dim = n_rows;
+opt.input.general_constraints.matrix.dim = [n_rows opt.n_states];
+```
+
+Now, declare the constraining function:
+
+```matlab
+opt.constraints.general.function = @(x,varargin) varargin{1}*x([1 3]) - varargin{2};
+```
+
+Finally, when passing it as arguments to the MPC solver, one does as follows:
+
+```matlab
+A = ones(10,2); % any matrix with proper dimensions
+b = ones(10,1); % any vector with proper dimensions
+args.p                  = [initial conditions; other_parameters; reshape(A,n_rows*opt.n_states,1); b];
+```
+
+One should not that the _reshape_ function above is necessary since CasADi only takes vectors as inputs, therefore it is needed to concatenate the columns of A into a single vector. If the dimensions of the $A$ and $b$ changes at each iteration, an option is to declare _n_rows_ as a higher value and, online, complete the remaining rows of $A$ and $b$ with zeros.
 
 ### Stage costs
 
