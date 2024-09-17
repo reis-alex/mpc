@@ -43,7 +43,6 @@ Xc = Polyhedron('A',vertcat(eye(n),-eye(n)),'b',xbound*ones(2*n,1));
 Uc = Polyhedron('A',vertcat(eye(m),-eye(m)),'b',ubound*ones(2*m,1));
 Z  = Xc*Uc; Z.minHRep();
 
-
 ZMatrix = [eye(n) zeros(n) zeros(n,m); K -K eye(m);...
           zeros(n) eye(n) zeros(n,m); zeros(m,n) zeros(m,n) eye(m)];
 ZMatrix = Polyhedron('A',blkdiag(Z.A,Z.A)*ZMatrix,'b',vertcat(Z.b,0.99*Z.b));
