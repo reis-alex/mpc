@@ -63,19 +63,18 @@ T = 100*P;
 opt.N           = 5;
 opt.n_controls  = m;
 opt.n_states    = n;
-opt.model.type	= 'linear';
+opt.model.type	= 'nonlinear';
 
-xs = SX.sym('Xs',opt.n_states);
-us = SX.sym('Us',opt.n_controls);
+xs = SX.sym('Xs',opt.n_states,1);
+us = SX.sym('Us',opt.n_controls,1);
 
 % add function handle on state equationf  f(x,u)
 m2_f = (m2*(sin(xs(1))^2));
 
-opt.model.A     = A;
-opt.model.B     = B;
+opt.func
 
-
-% Define costs
+sim_real_f = A*xs +B*us;
+% Define cos
 opt.costs.stage.function = @(x,u,param) (x-param(1:opt.n_states))'*Q*(x-param(1:opt.n_states)) + ...
                                          (u-param(opt.n_states+1:end))'*R*(u-param(opt.n_states+1:end)) + ...
                                          + 1000000*max(norm(m2*x(1)^2*x(4))-30,0)^2;                                      
