@@ -72,16 +72,36 @@ function [solver,args] = build_mpc(opt)
 import casadi.* 
  
 % check whether general constraints require inputs (vector or matrices)
-vararg_i = 1;
-if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'matrix')
-    input_matrix = SX.sym('input_matrix',opt.input.general_constraints.matrix.dim(1),opt.input.general_constraints.matrix.dim(2));
-    vararg{vararg_i} = input_matrix; %opt.constraints.general.matrix = input_matrix;
-    vararg_i = vararg_i + 1;
-end
 
-if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'vector')
-    input_vector = SX.sym('input_vector',opt.input.general_constraints.vector.dim);
-    vararg{vararg_i} = input_vector;%opt.constraints.general.vector = input_vector;
+if isfield(opt,'input')
+vararg{1} = [] ;
+vararg_sc{1} = [];    
+% if there are any input to general constraints
+vararg_i = 1;
+    if  isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'matrix')
+        input_matrix = SX.sym('input_matrix',opt.input.general_constraints.matrix.dim(1),opt.input.general_constraints.matrix.dim(2));
+        vararg{vararg_i} = input_matrix;
+        vararg_i = vararg_i + 1;
+    end
+
+    if  isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'vector')
+        input_vector = SX.sym('input_vector',opt.input.general_constraints.vector.dim);
+        vararg{vararg_i} = input_vector;
+    end
+
+% if there are any input to stage costs
+vararg_i = 1;
+    if isfield(opt.input,'stage_costs') && isfield(opt.input.stage_costs,'matrix')
+        input_matrix = SX.sym('input_matrix',opt.input.stage_costs.matrix.dim(1),opt.input.stage_costs.matrix.dim(2));
+        vararg_sc{vararg_i} = input_matrix; 
+        vararg_i = vararg_i + 1;
+    end
+    
+    if  isfield(opt.input,'stage_costs') && isfield(opt.input.stage_costs,'vector')
+        input_vector = SX.sym('input_vector',opt.input.stage_costs.vector.dim);
+        vararg_sc{vararg_i} = input_vector;
+    end
+    
 end
 
 if isfield(opt.constraints,'general')
@@ -104,7 +124,7 @@ switch opt.model.type
     case 'linear'
         model = opt.model.A*states + opt.model.B*controls;
     case 'nonlinear'
-        model = opt.model.function(states, controls);
+        model = opt.model.function(states,controls);
 end
 
 %--- something that checks opt.n_states and opt.n_controls and the size
@@ -117,7 +137,7 @@ if isfield(opt,'continuous_model')
         case 'euler'
             integ = @(x,h,xplus) x + h*xplus;
         case 'RK4'
-            % to be finished
+            integ = @(x,h,varargin) x + (h/6)*(varargin{1}+2*varargin{2}+2*varargin{3}+varargin{4});
     end
 else
     % if not continuous model, then just use difference equation
@@ -153,15 +173,38 @@ else
     stage_parameters = 0;
 end
 
+%% Prediction loop, integration schemes
 % prediction loop
-for k = 1:opt.N
-    obj             = obj + stagecost_fun(X(:,k),U(:,k),stage_parameters);
-    state_next      = X(:,k+1);
-    f_value         = f(X(:,k),U(:,k));
-    st_next_euler   = integ(X(:,k),opt.dt,f_value);
-    g               = [g; state_next-st_next_euler];    
+if isfield(opt,'continuous_model')
+    switch opt.continuous_model.integration
+        case 'RK4'
+            for k = 1:opt.N
+                obj             = obj + stagecost_fun(X(:,k),U(:,k),stage_parameters,varargin);
+                k1 = f(X(:,k),U(:,k));
+                k2 = f(X(:,k)+opt.dt/2*k1,U(:,k));
+                k3 = f(X(:,k)+opt.dt/2*k2,U(:,k));
+                k4 = f(X(:,k)+opt.dt*k3,U(:,k));
+                st_next_RK4   = integ(X(:,k),opt.dt,k1,k2,k3,k4);
+                g               = [g; X(:,k+1)-st_next_RK4]; 
+            end
+        case 'euler'
+            for k = 1:opt.N
+                obj             = obj + stagecost_fun(X(:,k),U(:,k),stage_parameters);
+                f_value         = f(X(:,k),U(:,k));
+                st_next_euler   = integ(X(:,k),opt.dt,f_value);
+                g               = [g; X(:,k+1)-st_next_euler]; 
+            end
+    end
+else % if the model is already discrete
+    for k = 1:opt.N
+        obj             = obj + stagecost_fun(X(:,k),U(:,k),stage_parameters,vararg_sc{:});
+        f_value         = f(X(:,k),U(:,k));
+        st_next         = integ(X(:,k),opt.dt,f_value);
+        g               = [g; X(:,k+1)-st_next];
+    end
 end
 
+%%
 % if constraints in states are polyhedral
 if isfield(opt,'constraints') && isfield(opt.constraints,'polyhedral')
     for i = 1:opt.N
@@ -209,7 +252,7 @@ if isfield(opt,'input')
     if isfield(opt.input,'vector')
         Param = [Param; opt.input.vector];
     end
-    
+% if there are any input to general constraints
     if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'matrix')
         aux = [];
         for jj = 1:opt.input.general_constraints.matrix.dim(2)
@@ -221,6 +264,20 @@ if isfield(opt,'input')
     if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'vector')
         Param = [Param; input_vector];
     end
+    
+% if there are any input to stage cost
+    if isfield(opt.input,'stage_costs') && isfield(opt.input.stage_costs,'matrix')
+        aux = [];
+        for jj = 1:opt.input.stage_costs.matrix.dim(2)
+            aux = [aux; input_matrix(:,jj)];
+        end
+        Param = [Param; aux];
+    end
+    
+    if isfield(opt.input,'stage_costs') && isfield(opt.input.stage_costs,'vector')
+        Param = [Param; input_vector];
+    end
+    
 end
 
 OPC   = struct('f', obj, 'x', OPT_variables, 'g', g, 'p', Param);
@@ -310,7 +367,7 @@ if (length(OPT_variables)~=length(args.lbx))
 end
 
 
-% generate solver
+%% generate solver
 opts                        = struct;
 switch opt.solver
     case 'ipopt'
@@ -327,3 +384,4 @@ switch opt.solver
         options.error_on_fail = 0;
         solver = qpsol('solver','qpoases',OPC,options);
 end
+
