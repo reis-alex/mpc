@@ -66,6 +66,7 @@
 % * Solver selection:
 %
 %   opt.solver = 'ipopt' or 'qpoases'    : for general NLP and QP, respectively
+% test
 
 %%
 function [solver,args] = build_mpc(opt)
