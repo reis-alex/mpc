@@ -1,77 +1,68 @@
 %% Build an MPC controller using CasADi
-% Output: CasADi solver
-% Input: user-defined options
-%
-%   opt.n_states      : number of states
-%   opt.n_controls    : number of control inputs
-%   opt.N             : lenght of prediction horizon
-% 
-% * Modeling:
-% 
-%   opt.model.type     : either 'linear' or 'nonlinear';
-%   opt.model.A        : for 'model.type' = 'linear'
-%   opt.model.B        : for 'model.type' = 'linear
-%   opt.model.function : if 'model.type' = 'nonlinear', it must be a function
-%                        handle with independent variables ordered as @(x,u)
-%
-% * Cost functions (stage and terminal): all costs are grouped within
-% opt.costs
-%
-%   opt.costs.stage.function  : if a given stage cost function is given, it 
-%                               must be a function handle with variables named 
-%                               and ordered as (x,u,extra), where extra can be 
-%                               extra parameters used in the function.
-% 
-% If no specific function is given, then V = x'*Q*x + u'*R*u is used, with
-% opt.stage.cost_function.Q/R = Q/R being numerical matrices of proper
-% dimensions
-% 
-%   opt.costs.stage.parameters    : must contain the same variables
-%                                   as used in "extra" in opt.costs.stage.function.
-% 
-%   opt.costs.terminal.function   : if a given terminal cost function is given, it must be a 
-%                                   function handle ordered as @(x,extra), where "extra" are 
-%                                   extra parameters used in the function
-%   opt.costs.terminal.parameters : must contain the same variables
-%                                   as used in "extra" in opt.terminal.cost_function.function
-% 
-% * Constraints : all are grouped within opt.constraints 
-% 
-%   opt.constraints.states        : variable-wise bounds. Must contain fields
-%                                   "upper" and "lower" with proper dimensions.
-%   opt.constraints.polyhedral    : describes the (polyhedral) state
-%                                   constraint set. It must contain fields set.A and set.b.
-% 
-% If fields "states" or "polyhedral" are given, the states are considered
-% unconstrained.
-% 
-%   opt.constraints.control       : variable-wise bounds. Must contain fields
-%                                   "upper" and "lower" with proper dimensions.
-% 
-%   opt.constraints.terminal.set  : describes the (polyhedral) terminal set
-%                                   (Ax(N)<=b). It must contain fields set.A
-%                                   and set.b.
-% 
-%	opt.constraints.terminal.parameters : list of all variables that are
-%                                         terminally constrained.
-% 
-%   opt.constraints.parameters.variables : list of all extra variables that
-%                                          are constrained somehow.
-% 
-% * Parameters:
-% 
-%   opt.input.vector : list of parameters taken as input to the optimization
-%                       problem.
-% 
-% * Solver selection:
-%
-%   opt.solver = 'ipopt' or 'qpoases'    : for general NLP and QP, respectively
-% test
 
-%%
 function [solver,args] = build_mpc(opt)
 import casadi.* 
  
+
+%% Gather all parameters (decision variables, inputs - everything that becomes SX.sym)
+
+if isfield(opt,'parameters')
+    parameters{1} = []; 
+        for i = [find(opt.parameters.dim(:,2)==1)]'
+            parameters{i} = SX.sym(opt.parameters.name{i},opt.parameters.dim(i,1),1);
+        end
+
+        for i = [find(opt.parameters.dim(:,2)~=1)]'
+            parameters{i} = reshape(SX.sym(opt.parameters.name{i},opt.parameters.dim(i,1),opt.parameters.dim(i,2)),opt.parameters.dim(i,2)*opt.parameters.dim(i,1),1);
+        end
+else
+    parameters{1} = [];
+end
+
+% sort all parameters and their destinations
+% parameters for stage cost
+if isfield(opt.costs.stage,'parameters')
+    parameters_stc = [];
+    for i = 1:length(opt.costs.stage.parameters)
+        parameters_stc = [parameters_stc; parameters{find(strcmp(opt.costs.stage.parameters{i},opt.parameters.name))}];
+    end
+end
+
+% parameters for terminal cost
+if isfield(opt.costs.terminal,'parameters')
+    parameters_trc = []; 
+    for i = 1:length(opt.costs.terminal.parameters)
+        parameters_trc = [parameters_trc; parameters{find(strcmp(opt.costs.terminal.parameters{i},opt.parameters.name))}];
+    end
+end
+
+% parameters for terminal constraints
+if isfield(opt.constraints.terminal,'parameters')
+    parameters_tc = []; 
+    for i = 1:length(opt.constraints.terminal.parameters)
+        parameters_tc = [parameters_tc; parameters{find(strcmp(opt.constraints.terminal.parameters{i},opt.parameters.name))}];
+    end
+end
+
+% parameters for general constraints
+if isfield(opt.constraints,'parameters')
+    parameters_const = [];
+    for i = 1:length(opt.constraints.parameters)
+        parameters_const = [parameters_const; parameters{find(strcmp(opt.constraints.parameters{i},opt.parameters.name))}];
+    end
+end
+
+% parameters for inputs
+if isfield(opt,'input')
+    parameters_input = [];
+    for i = 1:length(opt.input.vector)
+        parameters_input = [parameters_input; parameters{find(strcmp(opt.input.vector{i},opt.parameters.name))}];
+    end
+    for i = 1:length(opt.input.matrix)
+        parameters_input = [parameters_input; parameters{find(strcmp(opt.input.matrix{i},opt.parameters.name))}];
+    end
+end
+
 % check whether general constraints require inputs (vector or matrices)
 
 if isfield(opt,'input')
@@ -109,7 +100,7 @@ if isfield(opt.constraints,'general')
     opt.constraints.general.dim  = length(opt.constraints.general.function(zeros(opt.n_states,1),vararg{:}));
 end
 
-%generate states and control vectors
+%% Modeling: generate states and control vectors, model function, integration
 states = [];
 for i = 1:opt.n_states
    states = [states; SX.sym(['x' int2str(i)])];
@@ -154,8 +145,8 @@ Init_states = SX.sym('Init',opt.n_states);
 X           = SX.sym('X',opt.n_states,(opt.N+1));       % A vector that represents the states over the optimization problem.
 
 
-% Build prediction and cost function, initialize prediction with
-% measurement
+%% Build prediction and cost function, initialize prediction
+
 obj         = 0;
 g           = [];
 g           = [g; X(:,1)-Init_states];                 
@@ -167,12 +158,6 @@ else
     stagecost_fun    = @(x,u,extra) x'*opt.costs.stage.Q*x + u'*opt.costs.stage.R*u + 0*extra;
 end
 
-% if the cost function requires extra variables (as optimization variables or not)
-if isfield(opt.costs.stage,'parameters')
-    stage_parameters = opt.costs.stage.parameters;
-else
-    stage_parameters = 0;
-end
 
 %% Prediction loop, integration schemes
 % prediction loop
@@ -180,7 +165,7 @@ if isfield(opt,'continuous_model')
     switch opt.continuous_model.integration
         case 'RK4'
             for k = 1:opt.N
-                obj             = obj + stagecost_fun(X(:,k),U(:,k),stage_parameters,varargin);
+                obj             = obj + stagecost_fun(X(:,k),U(:,k),parameters_stc);
                 k1 = f(X(:,k),U(:,k));
                 k2 = f(X(:,k)+opt.dt/2*k1,U(:,k));
                 k3 = f(X(:,k)+opt.dt/2*k2,U(:,k));
@@ -190,7 +175,7 @@ if isfield(opt,'continuous_model')
             end
         case 'euler'
             for k = 1:opt.N
-                obj             = obj + stagecost_fun(X(:,k),U(:,k),stage_parameters);
+                obj             = obj + stagecost_fun(X(:,k),U(:,k),parameters_stc);
                 f_value         = f(X(:,k),U(:,k));
                 st_next_euler   = integ(X(:,k),opt.dt,f_value);
                 g               = [g; X(:,k+1)-st_next_euler]; 
@@ -198,7 +183,7 @@ if isfield(opt,'continuous_model')
     end
 else % if the model is already discrete
     for k = 1:opt.N
-        obj             = obj + stagecost_fun(X(:,k),U(:,k),stage_parameters,vararg_sc{:});
+        obj             = obj + stagecost_fun(X(:,k),U(:,k),parameters_stc);%,vararg_sc{:});
         f_value         = f(X(:,k),U(:,k));
         st_next         = integ(X(:,k),opt.dt,f_value);
         g               = [g; X(:,k+1)-st_next];
@@ -213,10 +198,10 @@ if isfield(opt,'constraints') && isfield(opt.constraints,'polyhedral')
     end
 end
 
-% if terminal costs and constraints A CORRIGIR
+% if terminal costs and constraints
 if isfield(opt,'constraints') && isfield(opt.constraints,'terminal') && isfield(opt.constraints.terminal,'parameters')
-    g   = [g; opt.constraints.terminal.set.A*vertcat(X(:,end),opt.constraints.terminal.parameters)-opt.constraints.terminal.set.b];
-    obj = obj + opt.costs.terminal.function(X(:,end),opt.costs.terminal.parameters);
+    g   = [g; opt.constraints.terminal.set.A*vertcat(X(:,end),parameters_tc)-opt.constraints.terminal.set.b];
+    obj = obj + opt.costs.terminal.function(X(:,end),parameters_trc);
 else
     g   = [g; opt.constraints.terminal.set.A*X(:,end)-opt.constraints.terminal.set.b];
     obj = obj + opt.costs.terminal.function(X(:,end));
@@ -229,6 +214,7 @@ if isfield(opt,'constraints') && isfield(opt.constraints,'general')
         g = [g; opt.constraints.general.function(X(:,i),vararg{:})];
     end
 end
+
 %% Define vector of decision variables
 % make the decision variable one column vector
 OPT_variables   = [reshape(X(:,1:end-1),opt.n_states*opt.N,1);
@@ -243,7 +229,7 @@ end
 % add extra variables to the list
 if isfield(opt,'constraints') && isfield(opt.constraints,'parameters')
     OPT_variables   = [OPT_variables; 
-                       opt.constraints.parameters.variables];
+                       parameters_tc];
 end
 
 %% define external parameters and problem structure
@@ -251,7 +237,7 @@ end
 Param = [Init_states];
 if isfield(opt,'input')
     if isfield(opt.input,'vector')
-        Param = [Param; opt.input.vector];
+        Param = [Param; parameters_input];
     end
 % if there are any input to general constraints
     if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'matrix')
@@ -355,11 +341,11 @@ end
 % bounds for extra variables
 if isfield(opt,'constraints') && isfield(opt.constraints,'parameters')
     if isfield(opt.constraints.parameters,'lower')
-        args.ubx(length(args.ubx)+1:length(args.ubx)+length(opt.constraints.parameters.variables)) = opt.constraints.parameters.upper;
-        args.lbx(length(args.lbx)+1:length(args.lbx)+length(opt.constraints.parameters.variables)) = opt.constraints.parameters.lower;
+        args.ubx(length(args.ubx)+1:length(args.ubx)+length(parameters_const)) = opt.constraints.parameters.upper;
+        args.lbx(length(args.lbx)+1:length(args.lbx)+length(parameters_const)) = opt.constraints.parameters.lower;
     else
-        args.ubx(length(args.ubx)+1:length(args.ubx)+length(opt.constraints.parameters.variables)) = +inf;
-        args.lbx(length(args.lbx)+1:length(args.lbx)+length(opt.constraints.parameters.variables)) = -inf;
+        args.ubx(length(args.ubx)+1:length(args.ubx)+length(parameters_const)) = +inf;
+        args.lbx(length(args.lbx)+1:length(args.lbx)+length(parameters_const)) = -inf;
     end
 end
 
