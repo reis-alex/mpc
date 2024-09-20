@@ -58,8 +58,10 @@ if isfield(opt,'input')
     for i = 1:length(opt.input.vector)
         parameters_input = [parameters_input; parameters{find(strcmp(opt.input.vector{i},opt.parameters.name))}];
     end
-    for i = 1:length(opt.input.matrix)
-        parameters_input = [parameters_input; parameters{find(strcmp(opt.input.matrix{i},opt.parameters.name))}];
+    if isfield(opt.input,'matrix')
+        for i = 1:length(opt.input.matrix)
+            parameters_input = [parameters_input; parameters{find(strcmp(opt.input.matrix{i},opt.parameters.name))}];
+        end
     end
 end
 
