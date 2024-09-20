@@ -1,234 +1,374 @@
-clear all
-close all
-clc
-import casadi.*
+%% Build an MPC controller using CasADi
 
-addpath(genpath('D:\adosreis\Documents\Optimization'))
-addpath(genpath('D:\adosreis\Desktop\researchcodes\MPC & RG\'))
-%% Define system, constraint and invariant sets
-
-A = [1 1; 0 1];
-A = blkdiag(A,A);
-B = [0 0; 1 0; 0 0; 0 1];
-C = [1 0 0 0; 0 0 1 0];
-
-[p,~] = size(C);
-[n,m] = size(B);
-
-Q = eye(n);
-R = eye(m);
-[K,P] = dlqr(A,B,Q,R); K=-K;
-
-xbound = 10; ubound = 0.2;
-Xc = Polyhedron('A',vertcat(eye(n),-eye(n)),'b',xbound*ones(2*n,1));
-Uc = Polyhedron('A',vertcat(eye(m),-eye(m)),'b',ubound*ones(2*m,1));
-Z  = Xc*Uc; Z.minHRep();
-
-
-ZMatrix = [eye(n) zeros(n) zeros(n,m); K -K eye(m);...
-          zeros(n) eye(n) zeros(n,m); zeros(m,n) zeros(m,n) eye(m)];
-ZMatrix = Polyhedron('A',blkdiag(Z.A,Z.A)*ZMatrix,'b',vertcat(Z.b,0.99*Z.b));
-
-Aw = [A+B*K -B*K B; zeros(n) eye(n) zeros(n,m); zeros(m,n) zeros(m,n) eye(m)];
-
-Aw =  LTISystem('A',Aw);
-Omega = Aw.invariantSet();
-Omega = Omega.intersect(ZMatrix);
-Omega.minHRep();
-
-T = 100*P;
-%%
-opt.N           = 5;
-opt.n_controls  = m;
-opt.n_states    = n;
-opt.model.type	= 'linear';
-opt.model.A     = A;
-opt.model.B     = B;
-
-maxrows = 50;
-
-opt.parameters.name = {'Xs','Us','Ref','VoroA','Vorob'};
-opt.parameters.dim = [opt.n_states 0; opt.n_controls 0; opt.n_states 0; maxrows 2; maxrows 0];
-
-opt.costs.stage.parameters = {'Xs','Us','VoroA','Vorob'};
-opt.costs.stage.function = @(x,u,varargin) (x-varargin{:}(1:4))'*Q*(x-varargin{:}(1:4)) + ...
-                                           (u-varargin{:}(5:6))'*R*(u-varargin{:}(5:6)) + ...
-                                            100*max(0,sum([varargin{:}(7:6+maxrows) varargin{:}(6+maxrows+1:6+maxrows*2)]*x([1 3])-varargin{:}(6+maxrows*2+1:end)));
+function [solver,args] = build_mpc(opt)
+import casadi.* 
  
-opt.costs.terminal.parameters = {'Xs','Us','Ref'};
-opt.costs.terminal.function = @(x,varargin) (x-varargin{:}(1:4))'*P*(x-varargin{:}(1:4)) + ...
-                                            (varargin{:}(1:4)-varargin{:}(7:10))'*T*(varargin{:}(1:4)-varargin{:}(7:10));
 
-%% Define constraints
-% terminal constraints
-opt.constraints.terminal.set = Omega;
-opt.constraints.terminal.parameters = {'Xs','Us'};
+%% Gather all parameters (decision variables, inputs - everything that becomes SX.sym)
 
-% control and state constraints
-opt.constraints.polyhedral = Xc;
-opt.constraints.control.upper = ubound*ones(m,1);
-opt.constraints.control.lower = -ubound*ones(m,1);
+if isfield(opt,'parameters')
+    parameters{1} = []; 
+        for i = [find(opt.parameters.dim(:,2)==0)]'
+            parameters{i} = SX.sym(opt.parameters.name{i},opt.parameters.dim(i,1),1);
+        end
 
-% constraint on parameters
-opt.constraints.parameters = {'Xs','Us'};
+        for i = [find(opt.parameters.dim(:,2)~=0)]'
+            parameters{i} = reshape(SX.sym(opt.parameters.name{i},opt.parameters.dim(i,1),opt.parameters.dim(i,2)),opt.parameters.dim(i,2)*opt.parameters.dim(i,1),1);
+        end
+else
+    parameters{1} = [];
+end
 
-%% define inputs
-opt.input.vector = {'Ref','Vorob'};
-opt.input.matrix = {'VoroA'};
+% sort all parameters and their destinations
+% parameters for stage cost
+if isfield(opt.costs.stage,'parameters')
+    parameters_stc = [];
+    for i = 1:length(opt.costs.stage.parameters)
+        parameters_stc = [parameters_stc; parameters{find(strcmp(opt.costs.stage.parameters{i},opt.parameters.name))}];
+    end
+end
 
-%% solver
-opt.solver      = 'ipopt';
-[solver,args]   = build_mpc(opt);
+% parameters for terminal cost
+if isfield(opt.costs.terminal,'parameters')
+    parameters_trc = []; 
+    for i = 1:length(opt.costs.terminal.parameters)
+        parameters_trc = [parameters_trc; parameters{find(strcmp(opt.costs.terminal.parameters{i},opt.parameters.name))}];
+    end
+end
 
-tmax            = 120;
-N_robots        = 3;
+% parameters for terminal constraints
+if isfield(opt.constraints.terminal,'parameters')
+    parameters_tc = []; 
+    for i = 1:length(opt.constraints.terminal.parameters)
+        parameters_tc = [parameters_tc; parameters{find(strcmp(opt.constraints.terminal.parameters{i},opt.parameters.name))}];
+    end
+end
 
-robot(:,1,1)    = [-4.1;0;1;0];
-robot(:,1,2)    = [-4.15;0;0;0];
-robot(:,1,3)    = [-4.1;0;-1;0];
+% parameters for general constraints
+if isfield(opt.constraints,'parameters')
+    parameters_const = [];
+    for i = 1:length(opt.constraints.parameters)
+        parameters_const = [parameters_const; parameters{find(strcmp(opt.constraints.parameters{i},opt.parameters.name))}];
+    end
+end
 
-u0 = zeros(opt.n_controls,opt.N);
-X0 = zeros(opt.n_states*opt.N,1);
+% parameters for inputs
+if isfield(opt,'input')
+    parameters_input = [];
+    for i = 1:length(opt.input.vector)
+        parameters_input = [parameters_input; parameters{find(strcmp(opt.input.vector{i},opt.parameters.name))}];
+    end
+    for i = 1:length(opt.input.matrix)
+        parameters_input = [parameters_input; parameters{find(strcmp(opt.input.matrix{i},opt.parameters.name))}];
+    end
+end
 
-colors = {'r','g','b'};
+% check whether general constraints require inputs (vector or matrices)
 
-n_interp = 20;
+if isfield(opt,'input')
+vararg{1} = [] ;
+vararg_sc{1} = [];    
+% if there are any input to general constraints
+vararg_i = 1;
+    if  isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'matrix')
+        input_matrix = SX.sym('input_matrix',opt.input.general_constraints.matrix.dim(1),opt.input.general_constraints.matrix.dim(2));
+        vararg{vararg_i} = input_matrix;
+        vararg_i = vararg_i + 1;
+    end
 
-for i = 1:N_robots
-    args.x0(:,i) = [X0;reshape(u0',opt.n_controls*opt.N,1);zeros(opt.n_states,1);zeros(opt.n_states,1);zeros(opt.n_controls,1)];
+    if  isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'vector')
+        input_vector = SX.sym('input_vector',opt.input.general_constraints.vector.dim);
+        vararg{vararg_i} = input_vector;
+    end
+
+% if there are any input to stage costs
+vararg_i = 1;
+    if isfield(opt.input,'stage_costs') && isfield(opt.input.stage_costs,'matrix')
+        input_matrix = SX.sym('input_matrix',opt.input.stage_costs.matrix.dim(1),opt.input.stage_costs.matrix.dim(2));
+        vararg_sc{vararg_i} = input_matrix; 
+        vararg_i = vararg_i + 1;
+    end
+    
+    if  isfield(opt.input,'stage_costs') && isfield(opt.input.stage_costs,'vector')
+        input_vector = SX.sym('input_vector',opt.input.stage_costs.vector.dim);
+        vararg_sc{vararg_i} = input_vector;
+    end
+    
+end
+
+if isfield(opt.constraints,'general')
+    opt.constraints.general.dim  = length(opt.constraints.general.function(zeros(opt.n_states,1),vararg{:}));
+end
+
+%% Modeling: generate states and control vectors, model function, integration
+states = [];
+for i = 1:opt.n_states
+   states = [states; SX.sym(['x' int2str(i)])];
+end
+
+controls = [];
+for i = 1:opt.n_controls
+    controls = [controls; SX.sym(['u' int2str(i)])];
+end
+
+% generate model either linear or nonlinear
+switch opt.model.type
+    case 'linear'
+        model = opt.model.A*states + opt.model.B*controls;
+    case 'nonlinear'
+        model = opt.model.function(states,controls);
+end
+
+%--- something that checks opt.n_states and opt.n_controls and the size
+% of A,B or opt.model.function 
+
+% if continuous model, select how to integration
+if isfield(opt,'continuous_model')
+    % set integration scheme
+    switch opt.continuous_model.integration
+        case 'euler'
+            integ = @(x,h,xplus) x + h*xplus;
+        case 'RK4'
+            integ = @(x,h,varargin) x + (h/6)*(varargin{1}+2*varargin{2}+2*varargin{3}+varargin{4});
+    end
+else
+    % if not continuous model, then just use difference equation
+    integ = @(x,h,xplus) xplus;
+    opt.dt = 0;
+end
+
+% model function f(x,u), and optimization vectors
+f = Function('f',{states,controls},{model}); 
+
+U           = SX.sym('U',opt.n_controls,opt.N);         % Decision variables (controls)
+Init_states = SX.sym('Init',opt.n_states); 
+X           = SX.sym('X',opt.n_states,(opt.N+1));       % A vector that represents the states over the optimization problem.
+
+
+%% Build prediction and cost function, initialize prediction
+
+obj         = 0;
+g           = [];
+g           = [g; X(:,1)-Init_states];                 
+
+% Determine the cost function to be used: simple quadratic or a custom
+if isfield(opt.costs.stage,'function')
+    stagecost_fun    = opt.costs.stage.function;
+else
+    stagecost_fun    = @(x,u,extra) x'*opt.costs.stage.Q*x + u'*opt.costs.stage.R*u + 0*extra;
+end
+
+
+%% Prediction loop, integration schemes
+% prediction loop
+if isfield(opt,'continuous_model')
+    switch opt.continuous_model.integration
+        case 'RK4'
+            for k = 1:opt.N
+                obj             = obj + stagecost_fun(X(:,k),U(:,k),parameters_stc);
+                k1 = f(X(:,k),U(:,k));
+                k2 = f(X(:,k)+opt.dt/2*k1,U(:,k));
+                k3 = f(X(:,k)+opt.dt/2*k2,U(:,k));
+                k4 = f(X(:,k)+opt.dt*k3,U(:,k));
+                st_next_RK4   = integ(X(:,k),opt.dt,k1,k2,k3,k4);
+                g               = [g; X(:,k+1)-st_next_RK4]; 
+            end
+        case 'euler'
+            for k = 1:opt.N
+                obj             = obj + stagecost_fun(X(:,k),U(:,k),parameters_stc);
+                f_value         = f(X(:,k),U(:,k));
+                st_next_euler   = integ(X(:,k),opt.dt,f_value);
+                g               = [g; X(:,k+1)-st_next_euler]; 
+            end
+    end
+else % if the model is already discrete
+    for k = 1:opt.N
+        obj             = obj + stagecost_fun(X(:,k),U(:,k),parameters_stc);%,vararg_sc{:});
+        f_value         = f(X(:,k),U(:,k));
+        st_next         = integ(X(:,k),opt.dt,f_value);
+        g               = [g; X(:,k+1)-st_next];
+    end
 end
 
 %%
-for t = 1:tmax
+% if constraints in states are polyhedral
+if isfield(opt,'constraints') && isfield(opt.constraints,'polyhedral')
+    for i = 1:opt.N
+        g = [g; opt.constraints.polyhedral.A*X(:,i)-opt.constraints.polyhedral.b];
+    end
+end
+
+% if terminal costs and constraints
+if isfield(opt,'constraints') && isfield(opt.constraints,'terminal') && isfield(opt.constraints.terminal,'parameters')
+    g   = [g; opt.constraints.terminal.set.A*vertcat(X(:,end),parameters_tc)-opt.constraints.terminal.set.b];
+    obj = obj + opt.costs.terminal.function(X(:,end),parameters_trc);
+else
+    g   = [g; opt.constraints.terminal.set.A*X(:,end)-opt.constraints.terminal.set.b];
+    obj = obj + opt.costs.terminal.function(X(:,end));
+end
+
+
+% if there are general constraints
+if isfield(opt,'constraints') && isfield(opt.constraints,'general')
+    for i = 1:opt.N
+        g = [g; opt.constraints.general.function(X(:,i),vararg{:})];
+    end
+end
+
+%% Define vector of decision variables
+% make the decision variable one column vector
+OPT_variables   = [reshape(X(:,1:end-1),opt.n_states*opt.N,1);
+                    reshape(U,opt.n_controls*opt.N,1);];
+                
+% add terminal constraint variables to the list
+if isfield(opt,'constraints') && isfield(opt.constraints,'terminal')
+    OPT_variables = [OPT_variables;
+                     reshape(X(:,end),opt.n_states,1)];
+end
+
+% add extra variables to the list
+if isfield(opt,'constraints') && isfield(opt.constraints,'parameters')
+    OPT_variables   = [OPT_variables; 
+                       parameters_tc];
+end
+
+%% define external parameters and problem structure
+
+Param = [Init_states];
+if isfield(opt,'input')
+    if isfield(opt.input,'vector')
+        Param = [Param; parameters_input];
+    end
+% if there are any input to general constraints
+    if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'matrix')
+        aux = [];
+        for jj = 1:opt.input.general_constraints.matrix.dim(2)
+            aux = [aux; input_matrix(:,jj)];
+        end
+        Param = [Param; aux];
+    end
     
-    if t<=20
-        yref(:,t,1)     = [robot(1,t,1)+0.5;1];
-        yref(:,t,2)     = [robot(1,t,2)+0.5;0+1.1*sind(40*t)];
-        yref(:,t,3)     = [robot(1,t,3)+0.5;-1];
+    if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'vector')
+        Param = [Param; input_vector];
+    end
+    
+% if there are any input to stage cost
+    if isfield(opt.input,'stage_costs') && isfield(opt.input.stage_costs,'matrix')
+        aux = [];
+        for jj = 1:opt.input.stage_costs.matrix.dim(2)
+            aux = [aux; input_matrix(:,jj)];
+        end
+        Param = [Param; aux];
+    end
+    
+    if isfield(opt.input,'stage_costs') && isfield(opt.input.stage_costs,'vector')
+        Param = [Param; input_vector];
+    end
+    
+end
+
+OPC   = struct('f', obj, 'x', OPT_variables, 'g', g, 'p', Param);
+
+%% Constraints
+% define equality constraints 
+args = struct;
+
+% equality for x(k+1)-x(k)
+args.lbg(1:opt.n_states*(opt.N+1)) = 0;
+args.ubg(1:opt.n_states*(opt.N+1)) = 0;
+
+% if constraints on states are polyhedral
+if isfield(opt.constraints,'polyhedral')
+    args.lbg(length(args.ubg)+1:length(args.ubg)+opt.N*length(opt.constraints.polyhedral.b)) = -inf;
+    args.ubg(length(args.ubg)+1:length(args.ubg)+opt.N*length(opt.constraints.polyhedral.b)) = 0;
+end
+
+% if terminal constraint, inequality for Xf.A*(x(N),xa,ua)<=Xf.b
+if isfield(opt.constraints,'terminal') && isfield(opt.constraints.terminal,'set') 
+    args.lbg(length(args.ubg)+1:length(args.ubg)+length(opt.constraints.terminal.set.b)) = -inf;
+    args.ubg(length(args.ubg)+1:length(args.ubg)+length(opt.constraints.terminal.set.b)) = 0; 
+end
+
+% if general constraints
+if isfield(opt.constraints,'general')
+    args.lbg(length(args.ubg)+1:length(args.ubg)+opt.N*opt.constraints.general.dim) = -inf;
+    args.ubg(length(args.ubg)+1:length(args.ubg)+opt.N*opt.constraints.general.dim) = 0;
+end
+
+%% inequality constraints
+% bounds for the states variables
+for k = 1:opt.n_states
+    if isfield(opt.constraints,'polyhedral')
+        args.lbx(k:opt.n_states:opt.n_states*(opt.N),1) = -inf;
+        args.ubx(k:opt.n_states:opt.n_states*(opt.N),1) = +inf;
     else
-        yref(:,t,1)     = [robot(1,t,1)+0.5;-1];
-        yref(:,t,2)     = [robot(1,t,2)+0.5;0+1.1*sind(20*t)];
-        yref(:,t,3)     = [robot(1,t,3)+0.5;1];
-    end
-    
-    for j = 1:N_robots
-
-        clear vrn_cllt
-        % Get a first (unconstrained) prediction for each robot
-        if t == 1
-            for jj = 1:N_robots
-                xs                      = pinv([A-eye(n) B; C zeros(p,m)])*[zeros(n,1);yref(:,1,jj)];
-                refsimu2(:,t,jj)        = xs(1:opt.n_states);
-                voro_A                  = vertcat(Xc.A(:,[1 3]),zeros(maxrows-length(Xc.A(:,[1 3])),2));
-                voro_b                  = vertcat(Xc.b,zeros(maxrows-length(Xc.b),1));
-                args.p                  = [robot(:,t,jj); refsimu2(:,t,jj);voro_b;reshape(voro_A,maxrows*2,1)];  
-                sol                     = solver('x0', args.x0(:,j), 'lbx', args.lbx, 'ubx', args.ubx,'lbg', args.lbg, 'ubg', args.ubg,'p',args.p);
-                for i = 1:opt.N
-                    xpred_initial(:,i,jj) = full(sol.x(1+i*opt.n_states:(i+1)*opt.n_states));
-                end            
-            end
-        end
-
-        % use predictions to get voronoi; compute control
-        if t == 1
-            actual          = xpred_initial([1 3],2:end-1,j);
-            others          = xpred_initial([1 3],2:end-1,[find([1:N_robots]-j)]);
-            xs              = pinv([A-eye(n) B; C zeros(p,m)])*[zeros(n,1);yref(:,1,j)];
-            refsimu(:,t,j)  = xs(1:opt.n_states);
+        if isfield(opt.constraints,'states')
+            args.lbx(k:opt.n_states:opt.n_states*(opt.N),1) = opt.constraints.states.lower(k);
+            args.ubx(k:opt.n_states:opt.n_states*(opt.N),1) = opt.constraints.states.upper(k);
         else
-            actual          = xpred([1 3],2:end-1,j,t-1);
-            others          = xpred([1 3],2:end-1,[find([1:N_robots]-j)],t-1);
-            xs              = pinv([A-eye(n) B; C zeros(p,m)])*[zeros(n,1);yref(:,t,j)];
-            refsimu(:,t,j)  = xs(1:opt.n_states);
+            args.lbx(k:opt.n_states:opt.n_states*(opt.N),1) = -inf;
+            args.ubx(k:opt.n_states:opt.n_states*(opt.N),1) = +inf;
         end
-
-        [vorocells,voropoly] = voronoi_extended(actual,others,n_interp,maxrows);
-        H = PolyUnion(voropoly); Hull = H.convexHull;
-        xplot = sdpvar(2,1);
-        Hull = poly_from_plot(Hull.A*xplot<=Hull.b,xplot,maxrows);
-%         Hull = intersect(Hull,Omega.projection([1 3]));
-        voro_A = Hull.A;  voro_A = vertcat(voro_A,zeros(maxrows-length(voro_A),2));
-        voro_b = Hull.b;  voro_b = vertcat(voro_b,zeros(maxrows-length(voro_b),1));
-        args.p = [robot(:,t,j); refsimu(:,t,j);voro_b;reshape(voro_A,maxrows*2,1)];  
-        tic
-        sol = solver('x0', args.x0(:,j), 'lbx', args.lbx, 'ubx', args.ubx,'lbg', args.lbg, 'ubg', args.ubg,'p',args.p);
-        tsol(t) = toc;
-
-        % get control sequence from MPC
-        for i = 0:opt.N
-            usol(:,i+1) = full(sol.x(opt.n_states*opt.N+1+i*opt.n_controls:opt.n_states*opt.N+i*opt.n_controls+2))';
-        end
-
-        for i = 1:opt.N
-            xpred(:,i,j,t) = full(sol.x(1+i*opt.n_states:(i+1)*opt.n_states));
-        end
-%         xpred(:,t,j) = full(sol.x(opt.n_states+1:2*opt.n_states));
-
-        u(:,t,j) = usol(:,1);
-    
-        % get artificial reference
-        ya(:,t,j) = C*reshape(full(sol.x(opt.N*opt.n_states+opt.N*opt.n_controls+opt.n_states+1:opt.N*opt.n_states+opt.N*opt.n_controls+2*opt.n_states)),opt.n_states,1);
-    
-        robot(:,t+1,j) = A*robot(:,t,j) + B*u(:,t,j);
-        y(:,t,j) = C*robot(:,t,j);
-    
-        args.x0(:,j) = full(sol.x); 
-        clear args.p usol Hull voropoly voro_A voro_b H xs actual others
-        t
     end
 end
 
 
-%% Plot
-close all
-colors = {'r','g','b'};
-
-dist_robot = zeros(4,1);
-for j = 1:length(u)
-    dist_robot(1,j) = norm(robot([1 3],j,1)-robot([1 3],j,2),2);
-    dist_robot(2,j) = norm(robot([1 3],j,1)-robot([1 3],j,3),2);
-    dist_robot(3,j) = norm(robot([1 3],j,2)-robot([1 3],j,3),2);
+% bounds for variables (controls)
+if isfield(opt.constraints,'control')
+    for k = 1:opt.n_controls
+        args.lbx(opt.n_states*opt.N+k:opt.n_controls:opt.n_states*opt.N+opt.n_controls*opt.N,1) = opt.constraints.control.lower(k);
+        args.ubx(opt.n_states*opt.N+k:opt.n_controls:opt.n_states*opt.N+opt.n_controls*opt.N,1) = opt.constraints.control.upper(k);
+    end
+else
+    for k = 1:opt.n_controls
+        args.lbx(opt.n_states*opt.N+k:opt.n_controls:opt.n_states*opt.N+opt.n_controls*opt.N,1) = -inf;
+        args.ubx(opt.n_states*opt.N+k:opt.n_controls:opt.n_states*opt.N+opt.n_controls*opt.N,1) = +inf;
+    end
 end
 
-figure
-hold on
-for j = 1:3
-    plot(1:length(u),dist_robot(j,:),['-o' colors{j}])
+% bounds for variables (X(N))
+if isfield(opt,'constraints') && isfield(opt.constraints,'terminal')
+    if isfield(opt.constraints.terminal,'set')
+        args.ubx(length(args.ubx)+1:length(args.ubx)+opt.n_states) = +inf;
+        args.lbx(length(args.lbx)+1:length(args.lbx)+opt.n_states) = -inf;
+    else
+        args.ubx(length(args.ubx)+1:length(args.ubx)+opt.n_states) = opt.constraints.states.upper;
+        args.lbx(length(args.lbx)+1:length(args.lbx)+opt.n_states) = opt.constraints.states.lower;
+    end
+    
 end
 
-figure(5)
-hold on
-plot(Xc.projection(1:2),'color','w')
-plot(refsimu(1,:,1),refsimu(3,:,1),'--r')
-plot(refsimu(1,:,2),refsimu(3,:,2),'--g')
-plot(refsimu(1,:,3),refsimu(3,:,3),'--b')
-
-for t = 1:tmax
-    figure(5)
-    plot(robot(1,1:t,1),robot(3,1:t,1),['-o' colors{1}])
-    plot(robot(1,1:t,2),robot(3,1:t,2),['-o' colors{2}])
-    plot(robot(1,1:t,3),robot(3,1:t,3),['-o' colors{3}])
-%     axis([-5 11 -3 3])
-    drawnow
-    pause(0.1)
-%     frame = getframe(5);
-%     im = frame2im(frame);
-%     [imind,cm] = rgb2ind(im,256);
-%     if t == 1
-%          imwrite(imind,cm,'N5.gif','gif', 'Loopcount',inf,'DelayTime',0.1);
-%     else
-%          imwrite(imind,cm,'N5.gif','gif','WriteMode','append','DelayTime',0.1);
-%     end
-
+% bounds for extra variables
+if isfield(opt,'constraints') && isfield(opt.constraints,'parameters')
+    if isfield(opt.constraints.parameters,'lower')
+        args.ubx(length(args.ubx)+1:length(args.ubx)+length(parameters_const)) = opt.constraints.parameters.upper;
+        args.lbx(length(args.lbx)+1:length(args.lbx)+length(parameters_const)) = opt.constraints.parameters.lower;
+    else
+        args.ubx(length(args.ubx)+1:length(args.ubx)+length(parameters_const)) = +inf;
+        args.lbx(length(args.lbx)+1:length(args.lbx)+length(parameters_const)) = -inf;
+    end
 end
 
-figure
-hold on
-for i = 1:3
-    subplot(121); hold on
-    stairs(1:tmax,u(1,:,i),['-' colors{i}])
-    subplot(122); hold on
-    stairs(1:tmax,u(2,:,i),['-' colors{i}])
+if (length(OPT_variables)~=length(args.lbx))
+    error('MPC error: Number of variables and respective bounds are different')
 end
 
+
+%% generate solver
+opts                        = struct;
+switch opt.solver
+    case 'ipopt'
+        opts.ipopt.max_iter         = 200;
+        opts.ipopt.print_level      = 0;
+        opts.print_time             = 0;
+        opts.ipopt.acceptable_tol   = 1e-8;
+        opts.ipopt.acceptable_obj_change_tol = 1e-8;
+        solver = nlpsol('solver', 'ipopt',OPC,opts);
+    case 'qpoases'
+        options.terminationTolerance = 1e-8;
+        options.boundTolerance = 1e-8;
+        options.printLevel = 'none';
+        options.error_on_fail = 0;
+        solver = qpsol('solver','qpoases',OPC,options);
+end
 
