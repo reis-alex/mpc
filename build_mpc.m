@@ -8,11 +8,11 @@ import casadi.*
 
 if isfield(opt,'parameters')
     parameters{1} = []; 
-        for i = [find(opt.parameters.dim(:,2)==0)]'
+        for i = [find(opt.parameters.dim(:,2)==1)]'
             parameters{i} = SX.sym(opt.parameters.name{i},opt.parameters.dim(i,1),1);
         end
 
-        for i = [find(opt.parameters.dim(:,2)~=0)]'
+        for i = [find(opt.parameters.dim(:,2)~=1)]'
             parameters{i} = reshape(SX.sym(opt.parameters.name{i},opt.parameters.dim(i,1),opt.parameters.dim(i,2)),opt.parameters.dim(i,2)*opt.parameters.dim(i,1),1);
         end
 else
