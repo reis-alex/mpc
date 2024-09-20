@@ -62,39 +62,45 @@ opt.n_controls  = m;
 opt.n_states    = n;
 opt.model.type	= 'nonlinear';
 
-xs = SX.sym('Xs',opt.n_states);
-us = SX.sym('Us',opt.n_controls);
+
+% Define parameters
+opt.parameters.name = {'Xs','Us','Ref'};
+opt.parameters.dim = [opt.n_states 1; opt.n_controls 1; opt.n_states 1];
+
 
 % add function handle on state equationf  f(x,u)
-m2_f = (m2*(sin(xs(1))^2));
+m2_f = @(x)(m2*(sin(x(1))^2));
 
 
-Ac=[[            0,     1,      0,     0];
+% Ac=[[            0,     1,      0,     0];
+%     [-(k1 + k2)/m1, -a1/m1,  k2/m1,  a2/m1];
+%     [            0,     0,      0,     1];
+%     [        k2/m2_f,  a2/m2_f, -k2/m2_f, -a2/m2_f]];
+% 
+% Bc = [ 0 k1/m1 0 0].';
+
+opt.model.function     = @(x,u)([[            0,     1,      0,     0];
     [-(k1 + k2)/m1, -a1/m1,  k2/m1,  a2/m1];
     [            0,     0,      0,     1];
-    [        k2/m2_f,  a2/m2_f, -k2/m2_f, -a2/m2_f]];
+    [        k2/(m2*(sin(x(1))^2)),  a2/(m2*(sin(x(1))^2)), -k2/(m2*(sin(x(1))^2)), -a2/(m2*(sin(x(1))^2))]]*x+B*u);
+%opt.model.function     =@(x,u)(Ac*x + Bc*u);
 
-Bc = [ 0 k1/m1 0 0].';
-opt.model.function     =@(xs,us)(Ac*xs + Bc*us);
-
-% Define costs
-opt.costs.stage.function = @(x,u,param) (x-param(1:opt.n_states))'*Q*(x-param(1:opt.n_states)) + ...
-                                         (u-param(opt.n_states+1:end))'*R*(u-param(opt.n_states+1:end)) + ...
+% Define costs touchy part !!! dimensions of varargin !!!
+opt.costs.stage.parameters = {'Xs','Us'};
+opt.costs.stage.function = @(x,u,varargin) (x-varargin{:}(1:4))'*Q*(x-varargin{:}(1:4)) + ...
+                                           (u-varargin{:}(5))'*R*(u-varargin{:}(5)) + ...
                                          + 1000000*max(norm(m2*x(1)^2*x(4))-30,0)^2;                                      
                                          
-opt.costs.stage.parameters = [xs;us];
-
-ref = SX.sym('Ref',opt.n_states);
-opt.costs.terminal.function = @(x,param) (x-param(1:opt.n_states))'*P*(x-param(1:opt.n_states)) + ...
-                                           (param(1:opt.n_states)-param(opt.n_states+1:end))'*T*(param(1:opt.n_states)-param(opt.n_states+1:end)) + ...
-                                            + 1000000*max(norm(m2*x(1)^2*x(4))-30,0)^2;
+opt.costs.terminal.parameters = {'Xs','Us','Ref'};
+opt.costs.terminal.function = @(x,varargin) (x-varargin{:}(1:4))'*P*(x-varargin{:}(1:4)) + ...
+                                            (varargin{:}(1:4)-varargin{:}(6:9))'*T*(varargin{:}(1:4)-varargin{:}(6:9)) + ...
+                                           + 1000000*max(norm(m2*x(1)^2*x(4))-30,0)^2;
                                                                                      
-opt.costs.terminal.parameters = [xs;ref];
-
 %% Define constraints
 % terminal constraints
 opt.constraints.terminal.set = Omega;
-opt.constraints.terminal.parameters = [xs;us];
+opt.constraints.terminal.parameters = {'Xs','Us'};
+
 
 % control and state constraints
 opt.constraints.polyhedral = Xc;
@@ -102,11 +108,12 @@ opt.constraints.control.upper = [ubound ubound];
 opt.constraints.control.lower = -[ubound ubound];
 
 % constraint on parameters
-opt.constraints.parameters.variables = [xs;us];
+opt.constraints.parameters = {'Xs','Us'};
 
 %% Define inputs to optimization
-opt.input.vector = ref;
-
+opt.input.vector = {'Ref'};
+opt.continuous_model.integration = 'euler';
+opt.dt = 0.1;
 %% Define the solver and generate it
 opt.solver = 'ipopt';
 [solver,args] = build_mpc(opt);

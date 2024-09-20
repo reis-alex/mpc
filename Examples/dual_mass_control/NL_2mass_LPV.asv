@@ -43,7 +43,6 @@ Xc = Polyhedron('A',vertcat(eye(n),-eye(n)),'b',xbound*ones(2*n,1));
 Uc = Polyhedron('A',vertcat(eye(m),-eye(m)),'b',ubound*ones(2*m,1));
 Z  = Xc*Uc; Z.minHRep();
 
-
 ZMatrix = [eye(n) zeros(n) zeros(n,m); K -K eye(m);...
           zeros(n) eye(n) zeros(n,m); zeros(m,n) zeros(m,n) eye(m)];
 ZMatrix = Polyhedron('A',blkdiag(Z.A,Z.A)*ZMatrix,'b',vertcat(Z.b,0.99*Z.b));
@@ -63,20 +62,28 @@ opt.n_controls  = m;
 opt.n_states    = n;
 opt.model.type	= 'nonlinear';
 
-xs = SX.sym('Xs',opt.n_states);
-us = SX.sym('Us',opt.n_controls);
+
+% Define parameters
+opt.parameters.name = {'Xs','Us','param'};
+opt.parameters.dim = [opt.n_states 1; opt.n_controls 1; opt.n_states 1];
+
 
 % add function handle on state equationf  f(x,u)
-m2_f = (m2*(sin(xs(1))^2));
+m2_f = @(x)(m2*(sin(x(1))^2));
 
 
-Ac=[[            0,     1,      0,     0];
+% Ac=[[            0,     1,      0,     0];
+%     [-(k1 + k2)/m1, -a1/m1,  k2/m1,  a2/m1];
+%     [            0,     0,      0,     1];
+%     [        k2/m2_f,  a2/m2_f, -k2/m2_f, -a2/m2_f]];
+% 
+% Bc = [ 0 k1/m1 0 0].';
+
+opt.model.function     = @(x,u)([[            0,     1,      0,     0];
     [-(k1 + k2)/m1, -a1/m1,  k2/m1,  a2/m1];
     [            0,     0,      0,     1];
-    [        k2/m2_f,  a2/m2_f, -k2/m2_f, -a2/m2_f]];
-
-Bc = [ 0 k1/m1 0 0].';
-opt.model.function     =@(xs,us)(Ac*xs + Bc*us);
+    [        k2/m2_f,  a2/m2_f, -k2/m2_f, -a2/m2_f]]);
+opt.model.function     =@(x,u)(Ac*x + Bc*u);
 
 % Define costs
 opt.costs.stage.function = @(x,u,param) (x-param(1:opt.n_states))'*Q*(x-param(1:opt.n_states)) + ...
@@ -148,11 +155,26 @@ for t = 1:tmax
     % get artificial reference
     ya(:,t) = C*reshape(full(sol.x(opt.N*opt.n_states+opt.N*opt.n_controls+opt.n_states+1:opt.N*opt.n_states+opt.N*opt.n_controls+2*opt.n_states)),opt.n_states,1);
     m2_f_real = (m2*(sin(xsimu(1))^2));
-    A = 
+    
+    A=[[            0,     1,      0,     0];
+    [-(k1 + k2)/m1, -a1/m1,  k2/m1,  a2/m1];
+    [            0,     0,      0,     1];
+    [        k2/m2_f_real ,  a2/m2_f_real , -k2/m2_f_real , -a2/m2_f_real]];
+
     xsimu(:,t+1) = A*xsimu(:,t) + B*u(:,t);
     y(:,t) = C*xsimu(:,t);
 
-    constraint(:,t) = m2*xsimu(1,t)^2*xsimu(4,t);
+    constraint(:,t) = m2*xsimu(2,t)^2*xsimu(4,t);
 
     args.x0 = full(sol.x); 
 end
+
+figure
+plot(xsimu(4,:), 'g-')
+hold on
+stairs(constraint,'--b')
+
+figure
+stairs(1:tmax+1,xsimu(1,:),'r');
+hold on
+stairs(1:tmax,refsimu,'--b');

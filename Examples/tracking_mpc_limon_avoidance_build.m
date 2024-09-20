@@ -48,7 +48,7 @@ radius = 16;
 
 % Define parameters
 opt.parameters.name = {'Xs','Us','Ref','Matrix','Vector'};
-opt.parameters.dim = [opt.n_states 0; opt.n_controls 0; opt.n_states 0; 10 2; 10 0];
+opt.parameters.dim = [opt.n_states 1; opt.n_controls 1; opt.n_states 1; 10 2; 10 1];
 
 % Define costs
 
