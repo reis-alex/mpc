@@ -50,11 +50,13 @@ opt.dt		= 0.1;
 Parameters are any decision variable to the optimization problem, or any input that is to be provided to the MPC online (references, for instance). The structure ``opt.parameters`` gathers all parameters to be declared by name and by dimension, _e.g._,
 
 ```matlab
-opt.parameters.name = {'xs','us','ref','vector','matrix'};
+opt.parameters.name = {'xs','us','ref','b','A'};
 opt.parameters.dim = [2 1; 1 1; 2 1; 10 1; 10 2];
 ```
 
-In the example above, we declare four variables: $x_s\in\mathbb{R}^2$,  $u_s\in\mathbb{R}$, _ref_$\in\mathbb{R}^2$, _vector_ $x_s\in\mathbb{R}^10$, and _matrix_ $x_s\in\mathbb{R}^{10\times 2}$. Note that each line in ``opt.parameters.dim`` gathers the dimensions for each variable *in the order* declared in ``opt.parameters.name``.
+In the example above, we declare four variables: $x_s\in\mathbb{R}^2$,  $u_s\in\mathbb{R}$, _ref_$\in\mathbb{R}^2$, $b\in\mathbb{R}^10$, and $A\in\mathbb{R}^{10\times 2}$. Note that each line in ``opt.parameters.dim`` gathers the dimensions for each variable *in the order* declared in ``opt.parameters.name``.
+
+Later, to introduce these variables in constraints or cost functions, one will just refer to the names listed in ``opt.parameters.name``.
 
 ### Constraints
 
@@ -91,7 +93,7 @@ opt.constraints.terminal.set = X;
 Terminal constraints (polyhedral or end-point) are possible, and should be provided through _opt.constraints.terminal_:
 
 * A set, in the form of a polyhedron (as above), is expected in _opt.constraints.terminal.set_, and the respective matrice A and b are needed (_i.e._, $Ax(N)\leq b$).
-* If any other parameters (seem as decision variables for the optimization problem) are to be terminally-constrained, they mst be listed in _opt.constraints.terminal.parameters_.
+* If any other parameters (seem as decision variables for the optimization problem) are to be terminally-constrained, they must be listed in _opt.constraints.terminal.parameters_.
 
 If any other parameter/decision variable is to be constrained (not terminally), there is an option _opt.constraints.parameters.variables_. A list of all constrained variables are expected. The corresponding bounds of such variables are expected in _opt.constraints.parameters.upper_ and _opt.constraints.parameters.lower_.
 
@@ -107,19 +109,24 @@ opt.constraints.general = @(x) x(1)^2+x(2)^2-1;
 
 *Example* (constraint dependent on external parameters): suppose $x\in\mathbb{R}^2$ (```opt.n_states=2```) and that the state is to be constrained by a polyhedral set that is updated with time, _e.g._, $A(k)x\leq b(k)$. 
 
-First, since the inputs ($A$ and $b$) are exclusively used in the general constraint, one should declare it as such. Clearly, since the MPC solver will not be updated afterwards, these input parameters have *fixed dimensions*, which we consider $10$ in this example:
+First, since the inputs ($A$ and $b$) are exclusively used in the general constraint, one should declare it in ``opt.parameters.name`` (see #Parameters). Clearly, since the MPC solver will not be updated afterwards, these input parameters have *fixed dimensions*, which we consider $10$ in this example:
 
 ```matlab
+opt.n_states = 2;
 n_rows = 10;
-opt.input.general_constraints.vector.dim = n_rows;
-opt.input.general_constraints.matrix.dim = [n_rows opt.n_states];
+opt.parameters.name = {'A','b'};
+opt.parameters.dim = [n_rows opt.n_states; n_rows 1];
+
 ```
 
 Now, declare the constraining function:
 
 ```matlab
-opt.constraints.general.function = @(x,varargin) varargin{1}*x([1 3]) - varargin{2};
+opt.constraints.general.parameters = {'A','b'}
+opt.constraints.general.function = @(x,varargin) (varargin{:}(1:n_rows,1) varargin{:}(n_rows+1:n_rows*2,1))*x - varargin{:}(n_rows*2+1:end);
 ```
+
+*Important:* since CasADi only accepts vectors as inputs, therefore any matrix input should be reshaped to a vector before parsing (see below), and should be reconstructed as a matrix fors its use *inside* for any function parsed to the solver. That is why, in the function above, one writes ``` (reshape(A,1:n_rows,1) reshape(A,n_rows+1:end,1)) ```.
 
 Finally, when passing it as arguments to the MPC solver, one does as follows:
 
@@ -129,7 +136,7 @@ b = ones(10,1); % any vector with proper dimensions
 args.p                  = [initial conditions; other_parameters; reshape(A,n_rows*opt.n_states,1); b];
 ```
 
-One should not that the _reshape_ function above is necessary since CasADi only takes vectors as inputs, therefore it is needed to concatenate the columns of A into a single vector. If the dimensions of the $A$ and $b$ changes at each iteration, an option is to declare _n_rows_ as a higher value and, online, complete the remaining rows of $A$ and $b$ with zeros.
+Again, the _reshape_ function above is necessary since CasADi only takes vectors as inputs, therefore it is needed to concatenate the columns of A into a single vector. If the dimensions of the $A$ and $b$ changes at each iteration, an option is to declare _n_rows_ as a higher value and, online, complete the remaining rows of $A$ and $b$ with zeros.
 
 ### Stage costs
 
@@ -137,7 +144,6 @@ These terms relate to state and control variables at each step over the predicti
 
 * The stage cost function is provided through _opt.costs.stage.function_, which takes a function handle as arguments. This handle takes arguments @(x,u,extra), where "extra" is mandatory even if no other variables is taken into account.
   * If no _opt.costs.stage.function_ is provided, the simple linear-quadratic stage cost, _i.e._, $V(x_k) = \sum_{k=0}^{N-1} x_k^\top Q x_k + u_k^\top R u_k$, is considered. This one requires the weighting matrices _opt.costs.stage.Q_ and _opt.costs.stage.R_ as numerical matrices of proper dimensions.
-  * If there are no extra parameters to be considered in the stage cost function, simply add `0*extra`.
 * If any other parameters (supposedly decision variables for the optimization problem) are considered in the stage cost function, it should be listed in the field _opt.costs.stage.parameters_.
 
 Example: consider the classical linear-quadratic cost for tracking a constant reference $p$ with a repulsion term regarding $\sigma$:
@@ -152,16 +158,16 @@ p = [10;10];
 sigma = [5;5]; 
 Q = eye(opt.n_state);
 R = eye(opt.n_controls);
-opt.costs.stage.function = @(x,u,extra) (x-p)'*Q*(x-p) + u'*R*u + 100*(x_k-\sigma)^2 + extra*0;
+opt.costs.stage.function = @(x,u) (x-p)'*Q*(x-p) + u'*R*u + 100*(x-\sigma)^2 ;
 ```
 
 ### Terminal costs
 
 These terms relate to state and control variables at the end of the prediction horizon (terminal point). The terminal ingredients are to be provided through _opt.costs.terminal_:
 
-* The terminal cost function is provided through _opt.costs.terminal.function_, which takes a function handle as argument. This handle must take arguments @(x,u,extra), where "extra" are *optional*.
+* The terminal cost function is provided through _opt.costs.terminal.function_, which takes a function handle as argument. This handle must take arguments @(x,u,varargin), where "varargin" are *optional*.
   *  _opt.costs.terminal.function_ is not mandatory.
-* If any parameters (other than state $x$) are considered in the terminal cost function, it must be listed in the filed _opt.costs.stage.parameters_
+* If any parameters (other than state $x$) are considered in the terminal cost function, it must be listed in the filed _opt.parameters_
 
 Example: consider a terminal constraint to be $x_N\in\Omega$, where $\Omega$ is a polyhedral set described such as $\Omega.A*x(N)\leq \Omega.b$.
 
@@ -171,16 +177,3 @@ opt.constraints.terminal.set.b = Omega.b;
 ```
 Note that it can be similarly done using a Polyhedron object (see Section _Constraints_ above).
 
-
-### User inputs
-
-One can pass external inputs to the optimization problem through the option _opt.input.vector_. The only input which is coded by default is the initializing state for the prediction (the feedback value measured from the state). Note that the variables provided through this option *are not* decision variables, but should still be parsed as CasADi symbolic variables. 
-
-Example: consider a linear quadratic cost for tracking a given constant reference:
-
-```matlab
-opt.costs.stage.function = @(x,u,extra) (x-extra)'*Q*(x-extra) + u'*R*u;
-ref = SX.sym('ref',opt.n_states);
-opt.costs.stage.parameters = ref;
-opt.input.vector = ref;
-```
