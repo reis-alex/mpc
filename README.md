@@ -44,6 +44,17 @@ opt.continuous_model.integration = 'euler';
 opt.dt		= 0.1;
 ```
 
+### Parameters
+
+Parameters are any decision variable to the optimization problem, or any input that is to be provided to the MPC online (references, for instance). The structure ``opt.parameters`` gathers all parameters to be declared by name and by dimension, _e.g._,
+
+```matlab
+opt.parameters.name = {'xs','us','ref','vector','matrix'};
+opt.parameters.dim = [2 1; 1 1; 2 1; 10 1; 10 2];
+```
+
+In the example above, we declare four variables: $x_s\in\mathbb{R}^2$,  $u_s\in\mathbb{R}$, _ref_$\in\mathbb{R}^2$, _vector_ $x_s\in\mathbb{R}^10$, and _matrix_ $x_s\in\mathbb{R}^{10\times 2}$. Note that each line in ``opt.parameters.dim`` gathers the dimensions for each variable *in the order* declared in ``opt.parameters.name``.
+
 ### Constraints
 
 These terms relate to general constraints to be imposed to the optimization problem. All kinds of constraints are gathered in _opt.constraints_. The types of constraints supported are:
