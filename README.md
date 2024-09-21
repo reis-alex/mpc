@@ -8,10 +8,11 @@ The routine _mpc_build_ is written to build a generic MPC formulation with CasAD
 2. Constraints
 	1. [General Constraints](#Constraints)
 	2. [General Constraints](#General-constraints)
-3. Costs
+3. [Parameters](#Parameters)
+4. Costs
 	1. [Stage Costs](#Stage-costs)
 	2. [Terminal Costs](#Terminal-costs)
-4. [User Inputs](#User-inputs)
+5. [User Inputs](#User-inputs)
 
 Some examples are available.
 
