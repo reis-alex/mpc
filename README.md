@@ -142,7 +142,7 @@ Again, the _reshape_ function above is necessary since CasADi only takes vectors
 
 These terms relate to state and control variables at each step over the prediction horizon (not at end-point, see *Terminal elements* below). The stage cost components are to be provided through _opt.costs.stage_:
 
-* The stage cost function is provided through _opt.costs.stage.function_, which takes a function handle as arguments. This handle takes arguments @(x,u,extra), where "extra" is mandatory even if no other variables is taken into account.
+* The stage cost function is provided through _opt.costs.stage.function_, which takes a function handle as arguments. This handle takes arguments @(x,u,varargin).
   * If no _opt.costs.stage.function_ is provided, the simple linear-quadratic stage cost, _i.e._, $V(x_k) = \sum_{k=0}^{N-1} x_k^\top Q x_k + u_k^\top R u_k$, is considered. This one requires the weighting matrices _opt.costs.stage.Q_ and _opt.costs.stage.R_ as numerical matrices of proper dimensions.
 * If any other parameters (supposedly decision variables for the optimization problem) are considered in the stage cost function, it should be listed in the field _opt.costs.stage.parameters_.
 
