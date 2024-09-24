@@ -15,7 +15,7 @@ I = m*l^2;
 % State space model
 
 A=[[         0,     1];
-    [(m*g*l/I),    -b]];
+    [-(m*g*l/I),    -b]];
 
 B = [ 0 1 ].';
 C = [ 1,0 ];
@@ -29,11 +29,11 @@ sys = c2d(ss(A,B,C,D),Ts);
 [p,~] = size(C);
 [n,m] = size(B);
 
-Q = 10000*eye(n);
+Q = 100*eye(n);
 R = eye(m);
 [K,P] = dlqr(A,B,Q,R); K=-K;
 
-xbound = 10; ubound = 10;
+xbound = 100; ubound = 10;
 Xc = Polyhedron('A',vertcat(eye(n),-eye(n)),'b',xbound*ones(2*n,1));
 Uc = Polyhedron('A',vertcat(eye(m),-eye(m)),'b',ubound*ones(2*m,1));
 Z  = Xc*Uc; Z.minHRep();
@@ -52,11 +52,10 @@ T = 1000*P;
 
 %% controler set up 
 
-opt.N           = 10;
+opt.N           = 100;
 opt.n_controls  = m;
 opt.n_states    = n;
 opt.model.type	= 'nonlinear';
-
 
 % Define parameters
 opt.parameters.name = {'Xs','Us','Ref'};
@@ -101,7 +100,7 @@ opt.solver = 'ipopt';
 [solver,args] = build_mpc(opt);
 
 %% Simulation loop
-tmax = 100;
+tmax = 300;
 
 x0 = [0;0];                     % initial condition.
 xsimu(:,1) = x0;                    % xsimu contains the history of states
@@ -117,11 +116,11 @@ for t = 1:tmax
 
     %yref = 0.1*sin(1*t);
 
-    yref = 0.8;
+    yref = pi/10;
     refsimu(:,t) = yref;
     
     A=[[        0,     1];
-       [(m*g*l/I),    -b]];
+       [-(m*g*l/I),    -b]];
 
     B = [ 0 1].';
     
@@ -151,6 +150,7 @@ end
 
 figure
 plot(u, 'g')
+
 figure
 plot(xsimu(1,:), 'g')
 hold on
