@@ -29,7 +29,7 @@ if isfield(opt.costs.stage,'parameters')
 end
 
 % parameters for terminal cost
-if isfield(opt.costs.terminal,'parameters')
+if isfield(opt.costs,'terminal') && isfield(opt.costs.terminal,'parameters')
     parameters_trc = []; 
     for i = 1:length(opt.costs.terminal.parameters)
         parameters_trc = [parameters_trc; parameters{find(strcmp(opt.costs.terminal.parameters{i},opt.parameters.name))}];
@@ -37,7 +37,7 @@ if isfield(opt.costs.terminal,'parameters')
 end
 
 % parameters for terminal constraints
-if isfield(opt.constraints.terminal,'parameters')
+if isfield(opt.constraints,'terminal') && isfield(opt.constraints.terminal,'parameters')
     parameters_tc = []; 
     for i = 1:length(opt.constraints.terminal.parameters)
         parameters_tc = [parameters_tc; parameters{find(strcmp(opt.constraints.terminal.parameters{i},opt.parameters.name))}];

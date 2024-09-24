@@ -21,7 +21,7 @@ B = [ 0 1 ].';
 C = [ 1,0 ];
 
 D=0;
-Ts = 1;
+Ts = 0.1;
 
 sys = c2d(ss(A,B,C,D),Ts);
 [A,B,C,D] = ssdata(sys);
@@ -29,11 +29,11 @@ sys = c2d(ss(A,B,C,D),Ts);
 [p,~] = size(C);
 [n,m] = size(B);
 
-Q = 100*eye(n);
+Q = 10000*eye(n);
 R = eye(m);
 [K,P] = dlqr(A,B,Q,R); K=-K;
 
-xbound = 10; ubound = 4;
+xbound = 10; ubound = 10;
 Xc = Polyhedron('A',vertcat(eye(n),-eye(n)),'b',xbound*ones(2*n,1));
 Uc = Polyhedron('A',vertcat(eye(m),-eye(m)),'b',ubound*ones(2*m,1));
 Z  = Xc*Uc; Z.minHRep();
@@ -48,17 +48,11 @@ Aw =  LTISystem('A',Aw,'Ts',Ts);
 Omega = Aw.invariantSet();
 Omega = Omega.intersect(ZMatrix);
 Omega.minHRep();
-T = 100*P;
-
-%% define state equation 
-
-theta_ddot = @(x,u)((u - b*x(2) - (m*g*l/I)*sin(x(1))));
-                                       
-dx_dt = @(x,u)([x(2); u - b*x(2) - (m*g*l/I)*sin(x(1))]);
+T = 1000*P;
 
 %% controler set up 
 
-opt.N           = 30;
+opt.N           = 10;
 opt.n_controls  = m;
 opt.n_states    = n;
 opt.model.type	= 'nonlinear';
@@ -107,7 +101,7 @@ opt.solver = 'ipopt';
 [solver,args] = build_mpc(opt);
 
 %% Simulation loop
-tmax = 200;
+tmax = 100;
 
 x0 = [0;0];                     % initial condition.
 xsimu(:,1) = x0;                    % xsimu contains the history of states
@@ -123,7 +117,7 @@ for t = 1:tmax
 
     %yref = 0.1*sin(1*t);
 
-    yref = [pi/6];
+    yref = 0.8;
     refsimu(:,t) = yref;
     
     A=[[        0,     1];
@@ -147,7 +141,7 @@ for t = 1:tmax
     % get artificial reference
     ya(:,t) = C*reshape(full(sol.x(opt.N*opt.n_states+opt.N*opt.n_controls+opt.n_states+1:opt.N*opt.n_states+opt.N*opt.n_controls+2*opt.n_states)),opt.n_states,1);
     
-    xsimu(:,t+1) = [xsimu(2,t); (u(:,t) - b*xsimu(2,t) - (m*g*l/I)*sin(xsimu(1,t)))];
+    xsimu(:,t+1) = xsimu(:,t) + opt.dt*(opt.model.function(xsimu(:,t),u(:,t)));
     y(:,t) = C*xsimu(:,t);
 
     constraint(:,t) = m*xsimu(1,t)^2;

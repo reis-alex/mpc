@@ -9,19 +9,20 @@ b = 1;
 g = 9.81;
 l = 1;
 I = m*l^2;
+
 %% Compute invariants
 
 
 % State space model
 
 A=[[         0,     1];
-    [(m*g*l/I),    -b]];
+    [-(m*g*l/I),    -b]];
 
 B = [ 0 1 ].';
 C = [ 1,0 ];
 
 D=0;
-Ts = 1;
+Ts = 0.01;
 
 sys = c2d(ss(A,B,C,D),Ts);
 [A,B,C,D] = ssdata(sys);
@@ -31,9 +32,9 @@ sys = c2d(ss(A,B,C,D),Ts);
 
 Q = 100*eye(n);
 R = eye(m);
-[K,P] = dlqr(A,B,Q,R); K=-K;
+[K,P] = dlqr(A,B,Q,R);% K=-K;
 
-xbound = 10; ubound = 400;
+xbound = 10; ubound = 4;
 Xc = Polyhedron('A',vertcat(eye(n),-eye(n)),'b',xbound*ones(2*n,1));
 Uc = Polyhedron('A',vertcat(eye(m),-eye(m)),'b',ubound*ones(2*m,1));
 Z  = Xc*Uc; Z.minHRep();
@@ -42,7 +43,7 @@ ZMatrix = [eye(n) zeros(n) zeros(n,m); K -K eye(m);...
           zeros(n) eye(n) zeros(n,m); zeros(m,n) zeros(m,n) eye(m)];
 ZMatrix = Polyhedron('A',blkdiag(Z.A,Z.A)*ZMatrix,'b',vertcat(Z.b,0.99*Z.b));
 
-Aw = [A+B*K -B*K B; zeros(n) eye(n) zeros(n,m); zeros(m,n) zeros(m,n) eye(m)];
+Aw = [A-B*K +B*K B; zeros(n) eye(n) zeros(n,m); zeros(m,n) zeros(m,n) eye(m)];
 
 Aw =  LTISystem('A',Aw,'Ts',Ts);
 Omega = Aw.invariantSet();
@@ -50,36 +51,36 @@ Omega = Omega.intersect(ZMatrix);
 Omega.minHRep();
 T = 100*P;
 
-%% define state equation 
-
-theta_ddot = @(x,u)((u - b*x(2) - (m*g*l/I)*sin(x(1))));
-                                       
-dx_dt = @(x,u)([x(2); u - b*x(2) - (m*g*l/I)*sin(x(1))]);
-
 %% controler set up 
 
-opt.N           = 10;
+opt.N           = 30;
 opt.n_controls  = m;
 opt.n_states    = n;
 opt.model.type	= 'nonlinear';
 
 
 % Define parameters
-opt.parameters.name = {'Xs','Us','Ref'};
-opt.parameters.dim = [opt.n_states 1; opt.n_controls 1; opt.n_states 1];
+% opt.parameters.name = {'Xs','Us','Ref'};
+opt.parameters.name = {'Ref'};
+opt.parameters.dim = [1 1];
 
 %% define SS and Cost function
-opt.model.function     = dx_dt;
+opt.model.function     =  @(x,u)([x(2); u - b*x(2) - (m*g*l/I)*sin(x(1))]);
 
-opt.costs.stage.parameters = {'Xs','Us'};
-opt.costs.stage.function = @(x,u,varargin) (x-varargin{:}(1:2))'*Q*(x-varargin{:}(1:2)) + ...
-                                           (u-varargin{:}(3))'*R*(u-varargin{:}(3)) + ...
-                                           + 1000000*max(norm(m*x(2)^2)-10,0)^2;                                      
+
+% opt.costs.stage.parameters = {'Xs','Us'};
+opt.costs.stage.parameters = {'Ref'};
+opt.costs.stage.function = @(x,u,varargin) (x-[varargin{:}(1);0])'*Q*(x-[varargin{:}(1);0]) + ...
+                                           (u)'*R*(u);%
+% opt.costs.stage.function = @(x,u,varargin) (x-varargin{:}(1:2))'*Q*(x-varargin{:}(1:2)) + ...
+%                                            (u-varargin{:}(3))'*R*(u-varargin{:}(3)) + ...
+%                                            +0;%+ 1000000*max(norm(m*x(2)^2)-10,0)^2;                                      
                                          
 opt.costs.terminal.parameters = {'Xs','Us','Ref'};
-opt.costs.terminal.function = @(x,varargin) (x-varargin{:}(1:2))'*P*(x-varargin{:}(1:2)) + ...
-                                            (varargin{:}(1:2)-varargin{:}(4:5))'*T*(varargin{:}(1:2)-varargin{:}(4:5)) + ...
-                                           + 1000000*max(norm(m*x(2)^2)-5,0)^2;
+opt.costs.terminal.function = @(x,varargin) (x)'*P*(x);
+% opt.costs.terminal.function = @(x,varargin) (x-varargin{:}(1:2))'*P*(x-varargin{:}(1:2)) + ...
+%                                             (varargin{:}(1:2)-varargin{:}(4:5))'*T*(varargin{:}(1:2)-varargin{:}(4:5)) + ...
+%                                            +0;%+ 1000000*max(norm(m*x(2)^2)-10,0)^2;
 
 %% Define constraints
 % terminal constraints
@@ -99,16 +100,16 @@ opt.constraints.parameters = {'Xs','Us'};
 
 %% Define inputs to optimization
 opt.input.vector = {'Ref'};
-opt.continuous_model.integration = 'euler';
-opt.dt = 0.1;
+opt.continuous_model.integration = 'RK4';
+opt.dt = Ts;
 %% Define the solver and generate it
 opt.solver = 'ipopt';
 [solver,args] = build_mpc(opt);
 
 %% Simulation loop
-tmax = 200;
+tmax = 50;
 
-x0 = [1;0];                     % initial condition.
+x0 = [0;0];                     % initial condition.
 xsimu(:,1) = x0;                    % xsimu contains the history of states
 u0 = zeros(m,opt.N);                % two control inputs for each robot
 X0 = zeros(opt.n_states*opt.N,1);   % initialization of the states decision variables
@@ -120,9 +121,9 @@ args.x0 = [X0;reshape(u0',opt.N,1);zeros(opt.n_states,1);zeros(opt.n_states,1);z
 
 for t = 1:tmax
 
-    yref = 0.1*sind(1*t);
+    %yref = 0.1*sin(1*t);
 
-    %yref = [1];
+    yref = 0;
     refsimu(:,t) = yref;
     
     A=[[        0,     1];
@@ -146,7 +147,7 @@ for t = 1:tmax
     % get artificial reference
     ya(:,t) = C*reshape(full(sol.x(opt.N*opt.n_states+opt.N*opt.n_controls+opt.n_states+1:opt.N*opt.n_states+opt.N*opt.n_controls+2*opt.n_states)),opt.n_states,1);
     
-    xsimu(:,t+1) = [xsimu(2); (u(:,t) - b*xsimu(2) - (m*g*l/I)*sin(xsimu(1)))];
+    xsimu(:,t+1) = opt.model.function(xsimu(:,t),u(:,t));
     y(:,t) = C*xsimu(:,t);
 
     constraint(:,t) = m*xsimu(1,t)^2;
@@ -155,9 +156,10 @@ for t = 1:tmax
 end
 
 figure
-plot(u, 'g')
+stairs(u, 'g')
+
 figure
-plot(xsimu(1,:), 'g')
+stairs(xsimu(1,:), 'g')
 hold on
 stairs(constraint,'--b')
 
