@@ -54,13 +54,13 @@ T = 100*P;
 
 theta_ddot = @(x,u)((u - b*x(2) - (m*g*l/I)*sin(x(1))));
                                        
-dx_dt = @(x,u)([x(2); theta_ddot(x,u)]);
+dx_dt = @(x,u)([x(2); u - b*x(2) - (m*g*l/I)*sin(x(1))]);
 
 %% controler set up 
 
-opt.N           = 10;
-opt.n_controls  = 1;
-opt.n_states    = 2;
+opt.N           = 30;
+opt.n_controls  = m;
+opt.n_states    = n;
 opt.model.type	= 'nonlinear';
 
 
@@ -69,17 +69,18 @@ opt.parameters.name = {'Xs','Us','Ref'};
 opt.parameters.dim = [opt.n_states 1; opt.n_controls 1; opt.n_states 1];
 
 %% define SS and Cost function
-opt.model.function     = dx_dt;
+opt.model.function     =  @(x,u)([x(2); u - b*x(2) - (m*g*l/I)*sin(x(1))]);
+
 
 opt.costs.stage.parameters = {'Xs','Us'};
 opt.costs.stage.function = @(x,u,varargin) (x-varargin{:}(1:2))'*Q*(x-varargin{:}(1:2)) + ...
-                                           (u-varargin{:}(1))'*R*(u-varargin{:}(1)) + ...
-                                           + 1000000*max(norm(m*x(2)^2)-10,0)^2;                                      
+                                           (u-varargin{:}(3))'*R*(u-varargin{:}(3)) + ...
+                                           +0;%+ 1000000*max(norm(m*x(2)^2)-10,0)^2;                                      
                                          
 opt.costs.terminal.parameters = {'Xs','Us','Ref'};
 opt.costs.terminal.function = @(x,varargin) (x-varargin{:}(1:2))'*P*(x-varargin{:}(1:2)) + ...
                                             (varargin{:}(1:2)-varargin{:}(4:5))'*T*(varargin{:}(1:2)-varargin{:}(4:5)) + ...
-                                           + 1000000*max(norm(m*x(2)^2)-5,0)^2;
+                                           +0;%+ 1000000*max(norm(m*x(2)^2)-10,0)^2;
 
 %% Define constraints
 % terminal constraints
@@ -90,7 +91,6 @@ opt.constraints.terminal.parameters = {'Xs','Us'};
 % control and state constraints
 opt.constraints.polyhedral = Xc;
 
-xbound = 10; ubound = 1;
 
 opt.constraints.control.upper = [ubound ubound];
 opt.constraints.control.lower = -[ubound ubound];
@@ -100,16 +100,16 @@ opt.constraints.parameters = {'Xs','Us'};
 
 %% Define inputs to optimization
 opt.input.vector = {'Ref'};
-opt.continuous_model.integration = 'euler';
-opt.dt = 1;
+opt.continuous_model.integration = 'RK4';
+opt.dt = Ts;
 %% Define the solver and generate it
 opt.solver = 'ipopt';
 [solver,args] = build_mpc(opt);
 
 %% Simulation loop
-tmax = 1000;
+tmax = 200;
 
-x0 = [1;0];                     % initial condition.
+x0 = [0;0];                     % initial condition.
 xsimu(:,1) = x0;                    % xsimu contains the history of states
 u0 = zeros(m,opt.N);                % two control inputs for each robot
 X0 = zeros(opt.n_states*opt.N,1);   % initialization of the states decision variables
@@ -121,9 +121,9 @@ args.x0 = [X0;reshape(u0',opt.N,1);zeros(opt.n_states,1);zeros(opt.n_states,1);z
 
 for t = 1:tmax
 
-    yref = 0.1*sind(1*t);
+    %yref = 0.1*sin(1*t);
 
-    %yref = [1];
+    yref = [pi/6];
     refsimu(:,t) = yref;
     
     A=[[        0,     1];
@@ -132,7 +132,7 @@ for t = 1:tmax
     B = [ 0 1].';
     
     xs = pinv([A-eye(n) B; [1 0], zeros(1,m)])*[zeros(n,1);yref];
-
+    
     % set the values of the parameters vector
     args.p = [xsimu(:,t);xs(1:opt.n_states)];                                              
     
@@ -143,11 +143,11 @@ for t = 1:tmax
 
     % get control sequence from MPC
     u(:,t) = full(sol.x(opt.n_states*opt.N+1));
-    xsimu(1,t)-yref
+    
     % get artificial reference
     ya(:,t) = C*reshape(full(sol.x(opt.N*opt.n_states+opt.N*opt.n_controls+opt.n_states+1:opt.N*opt.n_states+opt.N*opt.n_controls+2*opt.n_states)),opt.n_states,1);
     
-    xsimu(:,t+1) = [xsimu(2), (u(:,t) - b*xsimu(2) - (m*g*l/I)*sin(xsimu(1)))];
+    xsimu(:,t+1) = [xsimu(2,t); (u(:,t) - b*xsimu(2,t) - (m*g*l/I)*sin(xsimu(1,t)))];
     y(:,t) = C*xsimu(:,t);
 
     constraint(:,t) = m*xsimu(1,t)^2;
@@ -155,6 +155,8 @@ for t = 1:tmax
     args.x0 = full(sol.x); 
 end
 
+figure
+plot(u, 'g')
 figure
 plot(xsimu(1,:), 'g')
 hold on
