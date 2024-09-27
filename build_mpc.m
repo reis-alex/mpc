@@ -1,3 +1,8 @@
+%% to verify
+% model_type = fields(opt.model);
+%     obj = obj + opt.costs.terminal.function(X(:,end));
+
+
 %% Build an MPC controller using CasADi
 
 function [solver,args] = build_mpc(opt)
