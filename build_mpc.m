@@ -66,65 +66,72 @@ if isfield(opt,'input')
 end
 
 % check whether general constraints require inputs (vector or matrices)
-
-if isfield(opt,'input')
-vararg{1} = [] ;
-vararg_sc{1} = [];    
-% if there are any input to general constraints
-vararg_i = 1;
-    if  isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'matrix')
-        input_matrix = SX.sym('input_matrix',opt.input.general_constraints.matrix.dim(1),opt.input.general_constraints.matrix.dim(2));
-        vararg{vararg_i} = input_matrix;
-        vararg_i = vararg_i + 1;
-    end
-
-    if  isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'vector')
-        input_vector = SX.sym('input_vector',opt.input.general_constraints.vector.dim);
-        vararg{vararg_i} = input_vector;
-    end
-
-% if there are any input to stage costs
-vararg_i = 1;
-    if isfield(opt.input,'stage_costs') && isfield(opt.input.stage_costs,'matrix')
-        input_matrix = SX.sym('input_matrix',opt.input.stage_costs.matrix.dim(1),opt.input.stage_costs.matrix.dim(2));
-        vararg_sc{vararg_i} = input_matrix; 
-        vararg_i = vararg_i + 1;
-    end
-    
-    if  isfield(opt.input,'stage_costs') && isfield(opt.input.stage_costs,'vector')
-        input_vector = SX.sym('input_vector',opt.input.stage_costs.vector.dim);
-        vararg_sc{vararg_i} = input_vector;
-    end
-    
-end
-
-if isfield(opt.constraints,'general')
-    opt.constraints.general.dim  = length(opt.constraints.general.function(zeros(opt.n_states,1),vararg{:}));
-end
+% 
+% if isfield(opt,'input')
+% vararg{1} = [] ;
+% vararg_sc{1} = [];    
+% % if there are any input to general constraints
+% vararg_i = 1;
+%     if  isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'matrix')
+%         input_matrix = SX.sym('input_matrix',opt.input.general_constraints.matrix.dim(1),opt.input.general_constraints.matrix.dim(2));
+%         vararg{vararg_i} = input_matrix;
+%         vararg_i = vararg_i + 1;
+%     end
+% 
+%     if  isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'vector')
+%         input_vector = SX.sym('input_vector',opt.input.general_constraints.vector.dim);
+%         vararg{vararg_i} = input_vector;
+%     end
+% 
+% % if there are any input to stage costs
+% vararg_i = 1;
+%     if isfield(opt.input,'stage_costs') && isfield(opt.input.stage_costs,'matrix')
+%         input_matrix = SX.sym('input_matrix',opt.input.stage_costs.matrix.dim(1),opt.input.stage_costs.matrix.dim(2));
+%         vararg_sc{vararg_i} = input_matrix; 
+%         vararg_i = vararg_i + 1;
+%     end
+%     
+%     if  isfield(opt.input,'stage_costs') && isfield(opt.input.stage_costs,'vector')
+%         input_vector = SX.sym('input_vector',opt.input.stage_costs.vector.dim);
+%         vararg_sc{vararg_i} = input_vector;
+%     end
+%     
+% end
+% 
+% if isfield(opt.constraints,'general')
+%     opt.constraints.general.dim  = length(opt.constraints.general.function(zeros(opt.n_states,1),vararg{:}));
+% end
 
 %% Modeling: generate states and control vectors, model function, integration
-states = [];
-for i = 1:opt.n_states
-   states = [states; SX.sym(['x' int2str(i)])];
-end
 
+states = [];
 controls = [];
-for i = 1:opt.n_controls
-    controls = [controls; SX.sym(['u' int2str(i)])];
+if ~isfield(opt.model,'casadi')
+    for i = 1:opt.n_states
+        states = [states; SX.sym(['x' int2str(i)])];
+    end
+    
+    for i = 1:opt.n_controls
+        controls = [controls; SX.sym(['u' int2str(i)])];
+    end
+else
+    states = opt.model.casadi.states;
+    controls = opt.model.casadi.controls;
 end
 
 % generate model either linear or nonlinear
-if isfield(opt.model,'type')
-    switch opt.model.type
-        case 'linear'
-            model = opt.model.A*states + opt.model.B*controls;
-        case 'nonlinear'
-            model = opt.model.function(states,controls);
-    end
-else
-    model = opt.model.other;
+model_type = fields(opt.model);
+switch model_type{:}
+    case 'type'
+        switch opt.model.type
+            case 'linear'
+                model = opt.model.A*states + opt.model.B*controls;
+            case 'nonlinear'
+                model = opt.model.function(states,controls);
+        end
+    case 'casadi'
+        model = opt.model.casadi.function;
 end
-
 %--- something that checks opt.n_states and opt.n_controls and the size
 % of A,B or opt.model.function 
 
@@ -210,7 +217,7 @@ if isfield(opt,'constraints') && isfield(opt.constraints,'terminal') && isfield(
     obj = obj + opt.costs.terminal.function(X(:,end),parameters_trc);
 else
     g   = [g; opt.constraints.terminal.set.A*X(:,end)-opt.constraints.terminal.set.b];
-    obj = obj + opt.costs.terminal.function(X(:,end));
+%     obj = obj + opt.costs.terminal.function(X(:,end));
 end
 
 
@@ -235,7 +242,7 @@ end
 % add extra variables to the list
 if isfield(opt,'constraints') && isfield(opt.constraints,'parameters')
     OPT_variables   = [OPT_variables; 
-                       parameters_tc];
+                       parameters_const];
 end
 
 %% define external parameters and problem structure
