@@ -114,11 +114,15 @@ for i = 1:opt.n_controls
 end
 
 % generate model either linear or nonlinear
-switch opt.model.type
-    case 'linear'
-        model = opt.model.A*states + opt.model.B*controls;
-    case 'nonlinear'
-        model = opt.model.function(states,controls);
+if isfield(opt.model,'type')
+    switch opt.model.type
+        case 'linear'
+            model = opt.model.A*states + opt.model.B*controls;
+        case 'nonlinear'
+            model = opt.model.function(states,controls);
+    end
+else
+    model = opt.model.other;
 end
 
 %--- something that checks opt.n_states and opt.n_controls and the size
