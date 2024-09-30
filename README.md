@@ -158,10 +158,9 @@ Again, the _reshape_ function above is necessary since CasADi only takes vectors
 These terms relate to state and control variables at each step over the prediction horizon (not at end-point, see *Terminal elements* below). The stage cost components are to be provided through _opt.costs.stage_:
 
 * The stage cost function is provided through _opt.costs.stage.function_, which takes a function handle as arguments. This handle takes arguments @(x,u,varargin).
-  * If no _opt.costs.stage.function_ is provided, the simple linear-quadratic stage cost, _i.e._, $V(x_k) = \sum_{k=0}^{N-1} x_k^\top Q x_k + u_k^\top R u_k$, is considered. This one requires the weighting matrices _opt.costs.stage.Q_ and _opt.costs.stage.R_ as numerical matrices of proper dimensions.
 * If any other parameters (supposedly decision variables for the optimization problem) are considered in the stage cost function, it should be listed in the field _opt.costs.stage.parameters_.
 
-Example: consider the classical linear-quadratic cost for tracking a constant reference $p$ with a repulsion term regarding $\sigma$:
+Example: consider the classical linear-quadratic cost for tracking a user-input reference $p$ with a repulsion term regarding $\sigma$:
 
 $$
 \begin{equation*}
@@ -171,9 +170,12 @@ $$
 ```matlab
 p = [10;10];
 sigma = [5;5]; 
+opt.parameters.name = {'p'};
+opt.parameters.dim = [opt.n_states 1];
 Q = eye(opt.n_state);
 R = eye(opt.n_controls);
-opt.costs.stage.function = @(x,u) (x-p)'*Q*(x-p) + u'*R*u + 100*(x-\sigma)^2 ;
+opt.costs.stage.function = @(x,u,varargin) (x-varargin{:})'*Q*(x-varargin{:}) + u'*R*u + 100*(x-\sigma)^2 ;
+opt.costs.stage.parameters = {'p'};
 ```
 
 ### Terminal costs
