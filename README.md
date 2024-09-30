@@ -25,10 +25,10 @@ Some examples are available.
 The following lists the options possible (some are mandatory):
 
 * Number of states, inputs and the prediction horizon: _opt.n_states_, _opt.n_controls_ and _opt.N_, respectively.
-* Nature of the model: _opt.model.type_, which should be either 'linear', or 'nonlinear'.
-  * If _opt.type = linear_, the defining matrices A and B should be provided through _opt.model.A_ and _opt.model.B_.
-  * If _opt.type = nonlinear_, the respective function, being a function handle, must be provided through _opt.model.fun_. Note that the independent variables must ordered as @(x,u).
-    * If the model described in _opt.model.function_ is *continuous*, a field _opt.continuous_model_ is expected. This field contains_opt.continuous_model.integration_, which defines the integration scheme to be undertaken to cast the prediction and the options are "euler" and "RK4" (fourth-order Runge Kutta), and _opt.dt_, which is the time step.
+* The function describing the dynamical system is to be provided through _opt.model.function_. There are two ways to define this function:
+    	1. As a function handle, _e.g._, ``@(x,u) A*x+B*u`` (note that the order of $x$ and $u$ must be respected)
+	2. As a CasADi function, depending on variables SX.sym. Note that in this case, the state and input vector must be provided through _opt.model.states_ and _opt.model.controls_.
+* If the system is in *continuous time*, a field _opt.continuous_model_ is expected. This field contains _opt.continuous_model.integration_, which defines the integration scheme to be undertaken to cast the prediction and the options are "euler" and "RK4" (fourth-order Runge Kutta), and _opt.dt_, which is the time step.
 
 Example:
 
@@ -39,8 +39,23 @@ and discretize it, using first-order Euler, with a time step $dt=0.1$.
 ```matlab
 opt.n_states   	= 2;
 opt.n_controls 	= 2;
-opt.model.type 	= 'nonlinear'
-opt.model.fun  	= @(x,u) [x(1)^2+u(1);x(2)^2+u(2)];
+opt.model.function  	= @(x,u) [x(1)^2+u(1);x(2)^2+u(2)];
+opt.continuous_model.integration = 'euler';
+opt.dt		= 0.1;
+```
+
+The same example but using CasADi variables:
+
+```matlab
+opt.n_states   	= 2;
+opt.n_controls 	= 2;
+x1  = SX.sym('x1');
+x2 = SX.sym('x2');
+u1  = SX.sym('u1');
+u2 = SX.sym('u2');
+states = [x1;x2];
+controls = [u1,u2];
+opt.model.function  	= [x(1)^2+u(1);x(2)^2+u(2)];
 opt.continuous_model.integration = 'euler';
 opt.dt		= 0.1;
 ```
