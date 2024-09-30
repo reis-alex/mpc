@@ -110,7 +110,16 @@ Terminal constraints (polyhedral or end-point) are possible, and should be provi
 * A set, in the form of a polyhedron (as above), is expected in _opt.constraints.terminal.set_, and the respective matrice A and b are needed (_i.e._, $Ax(N)\leq b$).
 * If any other parameters (seem as decision variables for the optimization problem) are to be terminally-constrained, they must be listed in _opt.constraints.terminal.parameters_.
 
-If any other parameter/decision variable is to be constrained (not terminally), there is an option _opt.constraints.parameters.variables_. A list of all constrained variables are expected. The corresponding bounds of such variables are expected in _opt.constraints.parameters.upper_ and _opt.constraints.parameters.lower_.
+If any other parameter/decision variable is to be constrained (not terminally), there is an option _opt.constraints.parameters.variables_.
+
+Example: consider a terminal constraint to be $x_N\in\Omega$, where $\Omega$ is a polyhedral set described such as $\Omega.A*x(N)\leq \Omega.b$.
+
+```matlab
+opt.constraints.terminal.set.A = Omega.A;
+opt.constraints.terminal.set.b = Omega.b;
+```
+Note that it can be similarly done using a Polyhedron object (see Section _Constraints_ above).
+
 
 ### General constraints
 
@@ -182,15 +191,16 @@ opt.costs.stage.parameters = {'p'};
 
 These terms relate to state and control variables at the end of the prediction horizon (terminal point). The terminal ingredients are to be provided through _opt.costs.terminal_:
 
-* The terminal cost function is provided through _opt.costs.terminal.function_, which takes a function handle as argument. This handle must take arguments @(x,u,varargin), where "varargin" are *optional*.
-  *  _opt.costs.terminal.function_ is not mandatory.
-* If any parameters (other than state $x$) are considered in the terminal cost function, it must be listed in the filed _opt.parameters_
+* The terminal cost function is provided through _opt.costs.terminal.function_, which takes a function handle as argument. This handle must take arguments @(x,varargin), where "varargin" gathers optional parameters.
+* If _opt.costs.terminal.function_ is not given, the parser will simply constrain $x(N)\in\mathbb{X}_c$, being $\mathcal{X}_c$ the state constraint set for the whole prediction.
+* If any parameters (other than state $x$) are considered in the terminal cost function, it must be listed in the filed _opt.parameters_ and then declared to _opt.costs.terminal.parameters_.
 
-Example: consider a terminal constraint to be $x_N\in\Omega$, where $\Omega$ is a polyhedral set described such as $\Omega.A*x(N)\leq \Omega.b$.
-
+Example: consider the problem of steering the system to the closest steady-state $x_s$ approaching a given reference $ref$. To do so, one might weight the terminal point of the prediction plus a deviation error:
 ```matlab
-opt.constraints.terminal.set.A = Omega.A;
-opt.constraints.terminal.set.b = Omega.b;
+P = ...;
+T = 1000*P;
+opt.parameters.name = {'xs','Ref'};
+opt.parameters.dim = [opt.n_states 1; opt.n_states 1];
+opt.costs.terminal.parameters = {'xs','Ref'};
+opt.costs.terminal.function = @(x,varargin) (x-varargin{:}(1:4))'*P*(x-varargin{:}(1:4)) + (varargin{:}(1:4)-varargin{:}(5:8))'*T*(varargin{:}(1:4)-varargin{:}(5:8))
 ```
-Note that it can be similarly done using a Polyhedron object (see Section _Constraints_ above).
-
