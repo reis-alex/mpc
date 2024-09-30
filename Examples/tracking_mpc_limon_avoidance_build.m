@@ -40,10 +40,7 @@ T = 100*P;
 opt.N           = 10;
 opt.n_controls  = m;
 opt.n_states    = n;
-opt.model.type	= 'linear';
-opt.model.A     = A;
-opt.model.B     = B;
-
+opt.model.function	= @(x,u) A*x+B*u;
 radius = 16;
 
 % Define parameters
@@ -69,9 +66,11 @@ opt.constraints.terminal.set = Omega;
 opt.constraints.terminal.parameters = {'Xs','Us'};
 
 % control and state constraints
-opt.constraints.polyhedral = Xc;
-opt.constraints.control.upper = [0.2 0.2];
-opt.constraints.control.lower = [-0.2 -0.2];
+% opt.constraints.polyhedral = Xc;
+opt.constraints.states.upper = xbound*ones(opt.n_states,1);
+opt.constraints.states.lower = -xbound*ones(opt.n_states,1);
+opt.constraints.control.upper = [0.2 0.2]';
+opt.constraints.control.lower = [-0.2 -0.2]';
 
 % constraint on parameters
 opt.constraints.parameters = {'Xs','Us'};

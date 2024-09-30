@@ -46,14 +46,6 @@ if isfield(opt.constraints,'terminal') && isfield(opt.constraints.terminal,'para
 end
 
 % parameters for general constraints
-if isfield(opt.constraints,'general') && isfield(opt.constraints.general,'parameters')
-    parameters_gc = []; 
-    for i = 1:length(opt.constraints.general.parameters)
-        parameters_gc = [parameters_gc; parameters{find(strcmp(opt.constraints.general.parameters{i},opt.parameters.name))}];
-    end
-end
-
-% list parameters that are decision variables
 if isfield(opt.constraints,'parameters')
     parameters_const = [];
     for i = 1:length(opt.constraints.parameters)
@@ -188,9 +180,9 @@ end
 
 % if there are general constraints
 if isfield(opt,'constraints') && isfield(opt.constraints,'general')
-%     for i = 1:opt.N
-        g = [g; opt.constraints.general.function(X,parameters_gc)];
-%     end
+    for i = 1:opt.N
+        g = [g; opt.constraints.general.function(X(:,i),vararg{:})];
+    end
 end
 
 %% Define vector of decision variables
@@ -270,8 +262,8 @@ end
 
 % if general constraints
 if isfield(opt.constraints,'general')
-    args.lbg(length(args.ubg)+1:length(args.ubg)+size(opt.constraints.general.function(X,parameters_gc))) = 0;%-inf;
-    args.ubg(length(args.ubg)+1:length(args.ubg)+size(opt.constraints.general.function(X,parameters_gc))) = 0;
+    args.lbg(length(args.ubg)+1:length(args.ubg)+opt.N*opt.constraints.general.dim) = -inf;
+    args.ubg(length(args.ubg)+1:length(args.ubg)+opt.N*opt.constraints.general.dim) = 0;
 end
 
 %% inequality constraints
@@ -288,8 +280,8 @@ if isfield(opt.constraints,'polyhedral') || ~isfield(opt,'constraints')
     args.lbx(1:opt.n_states*(opt.N+aux),1) = -inf;
     args.ubx(1:opt.n_states*(opt.N+aux),1) = +inf;
 else
-    args.lbx(1:opt.n_states*(opt.N+aux),1) = repmat(opt.constraints.states.lower,opt.N+aux,1);
-    args.ubx(1:opt.n_states*(opt.N+aux),1) = repmat(opt.constraints.states.upper,opt.N+aux,1);
+    args.lbx(1:opt.n_states*(opt.N+aux),1) = repmat(opt.constraints.states.lower,opt.N,1);
+    args.ubx(1:opt.n_states*(opt.N+aux),1) = repmat(opt.constraints.states.upper,opt.N,1);
 end
 
 % bounds for variables (controls)
