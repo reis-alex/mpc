@@ -12,7 +12,7 @@ The routine _mpc_build_ is written to build a generic MPC formulation with CasAD
 4. Costs
 	1. [Stage Costs](#Stage-costs)
 	2. [Terminal Costs](#Terminal-costs)
-5. [User Inputs](#User-inputs)
+
 
 Some examples are available.
 
@@ -55,7 +55,7 @@ u1  = SX.sym('u1');
 u2 = SX.sym('u2');
 states = [x1;x2];
 controls = [u1,u2];
-opt.model.function  	= [x(1)^2+u(1);x(2)^2+u(2)];
+opt.model.function  	= [x1^2+u1;x2^2+u2];
 opt.continuous_model.integration = 'euler';
 opt.dt		= 0.1;
 ```
