@@ -75,7 +75,7 @@ Later, to introduce these variables in constraints or cost functions, one will j
 
 ### Constraints
 
-These terms relate to general constraints to be imposed to the optimization problem. All kinds of constraints are gathered in _opt.constraints_. The types of constraints supported are:
+The field _opt.constraints_ gathers the constraints to be imposed to the optimization problem. The types of constraints supported are:
 
 * Varible-wise bounds, provided through _opt.constraints.states.upper_ and _opt.constraints.states.lower_ for states, and _opt.constraints.control.upper_ and _opt.constraints.control.lower_ for the control inputs. These bounds must be given as a vector of appropriate dimensions (_i.e._, _opt.n_states_ and _opt.n_controls_).
 
@@ -96,13 +96,13 @@ Example: same as above, but with a polyhedral definition:
 ```matlab
 A = vertcat(eye(opt.n_states),-eye(opt.n_states));
 b = ones(opt.n_states*2,1);
-opt.constraints.terminal.set.A = A;
-opt.constraints.terminal.set.b = b;
+opt.constraints.polyhedral.set.A = A;
+opt.constraints.polyhedral.set.b = b;
 ```
 or, equivalently, if one uses the [MPT3 toolbox](https://www.mpt3.org/) (this might simplifying plotting the constraint set later):
 ```matlab
 X = Polyhedron('A',vertcat(eye(opt.n_states),-eye(opt.n_states)),'b',ones(opt.n_states*2,1));
-opt.constraints.terminal.set = X;
+opt.constraints.polyhedral.set = X;
 ```
 
 Terminal constraints (polyhedral or end-point) are possible, and should be provided through _opt.constraints.terminal_:
@@ -119,7 +119,7 @@ These options relate to general state and control constraints, which can be, for
 *Example* (non-linear constraint): suppose $x\in\mathbb{R}^2$ and define a nonlinear constraint such as $x_1^2 + x_2^2 \leq 1$:
 
 ```matlab
-opt.constraints.general = @(x) x(1)^2+x(2)^2-1;
+opt.constraints.general.function = @(x) x(1)^2+x(2)^2-1;
 ```
 
 *Example* (constraint dependent on external parameters): suppose $x\in\mathbb{R}^2$ (```opt.n_states=2```) and that the state is to be constrained by a polyhedral set that is updated with time, _e.g._, $A(k)x\leq b(k)$. 
