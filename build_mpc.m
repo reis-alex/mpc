@@ -193,8 +193,10 @@ if isfield(opt,'constraints') && isfield(opt.constraints,'general')
             for i = 1:opt.N
                 g = [g; opt.constraints.general.function(X(:,i),parameters_gc)];
             end
+            lengthgc = opt.N*length(opt.constraints.general.function(X(:,i),parameters_gc));
         case 'end'
             g = [g; opt.constraints.general.function(X(:,end),parameters_gc)];
+            lengthgc = length(opt.constraints.general.function(X(:,end),parameters_gc));
     end
 end
 
@@ -281,8 +283,10 @@ if isfield(opt.constraints,'general')
         case 'equality'
             bound_gc = 0;
     end
-    args.lbg(length(args.ubg)+1:length(args.ubg)+opt.N*opt.parameters.dim(end,1)) = bound_gc;
-    args.ubg(length(args.ubg)+1:length(args.ubg)+opt.N*opt.parameters.dim(end,1)) = 0;
+%     args.lbg(length(args.ubg)+1:length(args.ubg)+opt.N*opt.parameters.dim(end,1)) = bound_gc;
+%     args.ubg(length(args.ubg)+1:length(args.ubg)+opt.N*opt.parameters.dim(end,1)) = 0;
+    args.lbg(length(args.ubg)+1:length(args.ubg)+lengthgc) = bound_gc;
+    args.ubg(length(args.ubg)+1:length(args.ubg)+lengthgc) = 0;
 end
 
 %% inequality constraints
