@@ -55,14 +55,18 @@ T = 1000*P;
 opt.N           = 100;
 opt.n_controls  = m;
 opt.n_states    = n;
-opt.model.type	= 'nonlinear';
+%opt.model.type	= 'nonlinear';
 
 % Define parameters
 opt.parameters.name = {'Xs','Us','Ref'};
 opt.parameters.dim = [opt.n_states 1; opt.n_controls 1; opt.n_states 1];
 
 %% define SS and Cost function
-opt.model.function     =  @(x,u)([x(2); u - b*x(2) - (m*g*l/I)*sin(x(1))]);
+
+x = SX.sym('X', [2,1]);
+u = SX.sym('U', [1,1]);
+opt.model.other = [x(2); u + b*x(2) - (m*g*l/I)*sin(x(1))];
+%opt.model.function     =  @(x,u)([x(2); u - b*x(2) - (m*g*l/I)*sin(x(1))]);
 
 
 opt.costs.stage.parameters = {'Xs','Us'};
