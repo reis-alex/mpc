@@ -5,7 +5,6 @@ import casadi.*
 
 robot_path = 'C:\Users\Alex Reis\Desktop\GitHub\mpc\Examples\inverted_pendulum\inverted_pend.urdf';
 robot = importrobot(robot_path);
-robot.DataFormat = 'row';
 robot_acceleration = urdf2casadi.Dynamics.symbolicForwardDynamics(robot_path,0);
 
 % define state variables
@@ -13,8 +12,8 @@ q  = SX.sym('q', 1,1);
 qd = SX.sym('qd',1,1);
 tau = SX.sym('tau',1,1); 
 
-opt.N = 10;  
-opt.dt = 0.01;
+opt.N = 12;  
+opt.dt = 0.1;
 opt.n_controls  = 1;
 opt.n_states    = 2;
 opt.model.function = [[qd]; robot_acceleration([q],[qd],[0 0 -10],[tau])]; % a simple double integrator
@@ -36,7 +35,7 @@ opt.costs.stage.function = @(x,u,varargin) (x-varargin{:}(1:2))'*Q*(x-varargin{:
                                            (u)'*R*(u);
                   
 % control and state constraints
-xbound = pi;
+xbound = 190*pi/180;
 opt.constraints.states.upper  = xbound*ones(opt.n_states,1);
 opt.constraints.states.lower  = -xbound*ones(opt.n_states,1);
 opt.constraints.control.upper = 10*ones(opt.n_controls,1);
@@ -56,8 +55,8 @@ tic
 toc
 
 %% Time simulation
-tmax = 200;
-x0 = [-30*pi/180;0];                % initial condition.
+tmax = 50;
+x0 = [-90*pi/180;0];                % initial condition.
 xsimu(:,1) = x0;                    % xsimu contains the history of states
 u0 = zeros(opt.n_controls,opt.N);                % two control inputs for each robot
 X0 = zeros(opt.n_states*opt.N,1);   % initialization of the states decision variables
@@ -65,19 +64,9 @@ args.x0 = [X0;reshape(u0',opt.N,1);zeros(opt.n_states,1)];
 
 for k = 1:tmax
 
-    args.p = [xsimu(:,k);-120*pi/180;0];     
+    args.p = [xsimu(:,k);-30*pi/180;0];     
     sol = solver('x0', args.x0, 'lbx', args.lbx, 'ubx', args.ubx,'lbg', args.lbg, 'ubg', args.ubg,'p',args.p);
-    u(:,k) = full(sol.x(opt.n_states*(opt.N+1)+1));
-    aux2 = robot_acceleration(xsimu(1,k),xsimu(2,k),[0 0 -10],[u(:,k)]);
-    xsimu(:,k+1) = xsimu(:,k) + opt.dt*[xsimu(2,k); aux2.full()];
+    u(:,k) = full(sol.x(opt.n_states*opt.N+1));
+    xsimu(:,k+1) = xsimu(:,k) + opt.dt*(opt.model.function([xsimu(:,k)],[u(:,k)));
     args.x0 = full(sol.x); 
-end
-
-%% Plot
-
-for k = 1:length(xsimu)
-    show(robot,xsimu(1,k)');
-    axis auto
-    view([90 90 90])
-    drawnow
 end
