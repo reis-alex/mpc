@@ -17,7 +17,7 @@ The routine _mpc_build_ is written to build a generic MPC formulation with CasAD
 Some examples are available.
 
 1. [MPC for tracking linear systems using artificial references](https://github.com/reis-alex/mpc/blob/main/Examples/Example_Tracking.md):
-2. [MPC for robotics: using an URDF to generate a prediction model](https://github.com/reis-alex/mpc/blob/main/Examples/Example_URDF.md):
+2. [MPC and robotics: using an URDF to generate a prediction model](https://github.com/reis-alex/mpc/blob/main/Examples/Example_URDF.md):
 
 ## Options
 
