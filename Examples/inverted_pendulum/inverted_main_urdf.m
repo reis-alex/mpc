@@ -14,7 +14,7 @@ qd = SX.sym('qd',1,1);
 tau = SX.sym('tau',1,1); 
 
 opt.N = 10;  
-opt.dt = 0.01;
+opt.dt = 0.1;
 opt.n_controls  = 1;
 opt.n_states    = 2;
 opt.model.function = [[qd]; robot_acceleration([q],[qd],[0 0 -10],[tau])]; % a simple double integrator
@@ -65,7 +65,7 @@ args.x0 = [X0;reshape(u0',opt.N,1);zeros(opt.n_states,1)];
 
 for k = 1:tmax
 
-    args.p = [xsimu(:,k);-120*pi/180;0];     
+    args.p = [xsimu(:,k);-160*pi/180;0];     
     sol = solver('x0', args.x0, 'lbx', args.lbx, 'ubx', args.ubx,'lbg', args.lbg, 'ubg', args.ubg,'p',args.p);
     u(:,k) = full(sol.x(opt.n_states*(opt.N+1)+1));
     aux2 = robot_acceleration(xsimu(1,k),xsimu(2,k),[0 0 -10],[u(:,k)]);
