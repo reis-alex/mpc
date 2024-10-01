@@ -188,8 +188,13 @@ end
 
 % if there are general constraints
 if isfield(opt,'constraints') && isfield(opt.constraints,'general')
-    for i = 1:opt.N
-        g = [g; opt.constraints.general.function(X(:,i),parameters_gc)];
+    switch opt.constraints.general.elements
+        case 'N'
+            for i = 1:opt.N
+                g = [g; opt.constraints.general.function(X(:,i),parameters_gc)];
+            end
+        case 'end'
+            g = [g; opt.constraints.general.function(X(:,end),parameters_gc)];
     end
 end
 
@@ -270,7 +275,6 @@ end
 
 % if general constraints
 if isfield(opt.constraints,'general')
-
     switch opt.constraints.general.type
         case 'inequality'
             bound_gc = -inf;
