@@ -188,9 +188,9 @@ end
 
 % if there are general constraints
 if isfield(opt,'constraints') && isfield(opt.constraints,'general')
-%     for i = 1:opt.N
-        g = [g; opt.constraints.general.function(X,parameters_gc)];
-%     end
+    for i = 1:opt.N
+        g = [g; opt.constraints.general.function(X(:,i),parameters_gc)];
+    end
 end
 
 %% Define vector of decision variables
@@ -270,8 +270,15 @@ end
 
 % if general constraints
 if isfield(opt.constraints,'general')
-    args.lbg(length(args.ubg)+1:length(args.ubg)+size(opt.constraints.general.function(X,parameters_gc))) = 0;%-inf;
-    args.ubg(length(args.ubg)+1:length(args.ubg)+size(opt.constraints.general.function(X,parameters_gc))) = 0;
+
+    switch opt.constraints.general.type
+        case 'inequality'
+            bound_gc = -inf;
+        case 'equality'
+            bound_gc = 0;
+    end
+    args.lbg(length(args.ubg)+1:length(args.ubg)+opt.N*opt.parameters.dim(end,1)) = bound_gc;
+    args.ubg(length(args.ubg)+1:length(args.ubg)+opt.N*opt.parameters.dim(end,1)) = 0;
 end
 
 %% inequality constraints
