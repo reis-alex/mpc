@@ -75,17 +75,56 @@ epsilon_ddot = invH*(real_u-Qv);
 %
 epsilon_ddot = simplify(epsilon_ddot);
 
-
+%% MPC
 
 opt.N = 10;  
 opt.dt = 0.1;
-opt.n_controls  = 1;
-opt.n_states    = 2;
-opt.model.function = [[qt_dot; qdot]; epsilon_ddot]; % a simple double integrator
+opt.n_controls  = n_q;
+opt.n_states    = 2*(6+n_q);
+opt.model.function = [[qt_dot; qdot]; epsilon_ddot];
 opt.model.states   =  [qt; q; qt_dot; qdot];
 opt.model.controls = [tau_q];
 opt.continuous_model.integration = 'euler';
 
+% Define parameters
+opt.parameters.name = {'Ref'};
+opt.parameters.dim = [opt.n_states 1];
 
+% control and state constraints
+Theta = pi/4*ones(3,1);
+R = inf*ones(3,1);
+Q = pi*ones(opt.n_states,1);
+Thetad = 1*ones(3,1);
+V = 5*ones(3,1);
+Qd = 1*ones(opt.n_states,1);
 
+state_constraints = [Theta; R; Q; Thetad; V; Qd]; 
+opt.constraints.states.upper  =  state_constraints;
+opt.constraints.states.lower  = -state_constraints;
+
+control_constraints = ones(opt.n_controls,1);
+opt.constraints.control.upper =  control_constraints;
+opt.constraints.control.lower = -control_constraints;
+opt.constraints.general.function = @(x,varargin) x(:,end)-varargin{:};
+
+opt.constraints.general.parameters  = {'Ref'};
+opt.constraints.general.type        = 'equality';
+opt.constraints.general.elements 	= 'end';
+
+% Define costs
+Qc = 1000000*eye(opt.n_states);
+Rc = 0.1*eye(opt.n_controls);
+
+opt.costs.stage.parameters = {'Ref'};
+opt.costs.stage.function = @(x,u,varargin) (x-varargin{:}(1:opt.n_states))'*Qc*(x-varargin{:}(1:opt.n_states)) + ...
+                                           u'*Rc*u;
+                                       
+% Define inputs to optimization
+opt.input.vector = {'Ref'};
+
+% Define the solver and generate it
+opt.solver = 'ipopt';
+tic
+[solver,args] = build_mpc(opt);
+toc
 
