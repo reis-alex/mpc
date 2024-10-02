@@ -1,7 +1,7 @@
-clear all
-close all
-clc
+clear all; close all; clc;
+addpath(genpath('C:\Users\Alex Reis\Documents\MATLAB\urdf2casadi-matlab-master'))
 import casadi.*
+
 
 robot_path = 'C:\Users\Alex Reis\Desktop\GitHub\mpc\Examples\inverted_pendulum\inverted_pend.urdf';
 robot = importrobot(robot_path);
