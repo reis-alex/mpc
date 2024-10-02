@@ -1,0 +1,363 @@
+<?xml version="1.0" ?>
+
+<robot name="VISPA">
+
+  <!-- Standard ROS(-industrial) frames -->
+  <!-- inertials not needed here -->
+  <link name="world"/>
+
+  <link name="Link_0">
+    <visual>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/torso.stl"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/torso.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.627"/>
+      <inertia ixx="0.00281845585208" ixy="0" ixz="0" iyy="0.00281883333333" iyz="0" izz="0.00379978918542"/>
+      <origin xyz="0 0 0.0"/>
+    </inertial>
+  </link>
+<!-- leg_a -->
+  <link name="Link_1_a">
+    <visual>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link1.stl"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link1.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="2.328"/>
+      <inertia ixx="0.012" ixy="0" ixz="0" iyy="0.007" iyz="0.003" izz="0.008"/>
+      <origin xyz="0 -0.029 -0.043"/>
+    </inertial>
+  </link>
+
+  <link name="Link_2_a">
+    <visual>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link2_0_5.stl"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link2_0_5.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="3.995"/>
+      <inertia ixx="0.010" ixy="0" ixz="0" iyy="0.578" iyz="0" izz="0.574"/>
+      <origin xyz="0.25 0 0.142"/>
+    </inertial>
+  </link>
+
+  <link name="Link_3_a">
+    <visual>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link3.stl"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link3.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="2.328"/>
+      <inertia ixx="0.012" ixy="0" ixz="0" iyy="0.008" iyz="0.003" izz="0.007"/>
+      <origin xyz="0 0.043 0.029"/>
+    </inertial>
+  </link>
+
+  <link name="Link_4_a">
+    <visual>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link4.stl"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link4.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="3.157"/>
+      <inertia ixx="0.199" ixy="0" ixz="0" iyy="0.193" iyz="0.01" izz="0.01"/>
+      <origin xyz="0 -0.043 -0.210"/>
+    </inertial>
+  </link>
+
+  <link name="Link_5_a">
+    <visual>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link5.stl"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link5.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="2.695"/>
+      <inertia ixx="0.029" ixy="0" ixz="0" iyy="0.006" iyz="-0.001" izz="0.027"/>
+      <origin xyz="0 0.125 -0.007"/>
+    </inertial>
+  </link>
+
+  <link name="Link_6_a">
+    <visual>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link6.stl"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link6.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.924"/>
+      <inertia ixx="0.002" ixy="0" ixz="0" iyy="0.002" iyz="0" izz="0.001"/>
+      <origin xyz="0 0 0.0"/>
+    </inertial>
+  </link>
+
+  <link name="tool_a"/>
+
+<!-- leg_b -->
+  <link name="Link_1_b">
+    <visual>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link1.stl"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link1.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="2.328"/>
+      <inertia ixx="0.012" ixy="0" ixz="0" iyy="0.007" iyz="0.003" izz="0.008"/>
+      <origin xyz="0 -0.029 -0.043"/>
+    </inertial>
+  </link>
+
+  <link name="Link_2_b">
+    <visual>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link2_0_5.stl"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link2_0_5.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="3.995"/>
+      <inertia ixx="0.010" ixy="0" ixz="0" iyy="0.578" iyz="0" izz="0.574"/>
+      <origin xyz="0.25 0 0.142"/>
+    </inertial>
+  </link>
+
+  <link name="Link_3_b">
+    <visual>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link3.stl"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link3.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="2.328"/>
+      <inertia ixx="0.012" ixy="0" ixz="0" iyy="0.008" iyz="0.003" izz="0.007"/>
+      <origin xyz="0 0.043 0.029"/>
+    </inertial>
+  </link>
+
+  <link name="Link_4_b">
+    <visual>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link4.stl"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link4.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="3.157"/>
+      <inertia ixx="0.199" ixy="0" ixz="0" iyy="0.193" iyz="0.01" izz="0.01"/>
+      <origin xyz="0 -0.043 -0.210"/>
+    </inertial>
+  </link>
+
+  <link name="Link_5_b">
+    <visual>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link5.stl"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link5.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="2.695"/>
+      <inertia ixx="0.029" ixy="0" ixz="0" iyy="0.006" iyz="-0.001" izz="0.027"/>
+      <origin xyz="0 0.125 -0.007"/>
+    </inertial>
+  </link>
+
+  <link name="Link_6_b">
+    <visual>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link6.stl"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link6.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.924"/>
+      <inertia ixx="0.002" ixy="0" ixz="0" iyy="0.002" iyz="0" izz="0.001"/>
+      <origin xyz="0 0 0.0"/>
+    </inertial>
+  </link>
+
+  <link name="tool_b"/>
+
+<!-- joint torso -->
+  <joint name="world-link0" type="fixed">
+    <parent link="world"/>
+    <child link="Link_0"/>
+    <!-- <origin xyz="0 0 0" rpy="0 0 ${2*C_1_DEGREE}"/> -->
+  </joint>
+
+<!-- leg_a -->
+  <joint name="Joint_1_a" type="revolute">
+    <parent link="Link_0"/>
+    <child link="Link_1_a"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" lower="-3.14149265359" upper="3.14149265359" velocity="0.09395689"/>
+    <origin xyz="-0.240  0.41469 -0.064498" rpy="-2.0944 0 0.5236"/>
+  </joint>
+
+  <joint name="Joint_2_a" type="revolute">
+    <parent link="Link_1_a"/>
+    <child link="Link_2_a"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" lower="-3.14149265359" upper="3.14149265359" velocity="0.09395689"/>
+    <origin xyz="0 0 0" rpy="1.57079632679 -1.57079632679 0"/>
+  </joint>
+
+  <joint name="Joint_3_a" type="revolute">
+    <parent link="Link_2_a"/>
+    <child link="Link_3_a"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" lower="-3.14149265359" upper="3.14149265359" velocity="0.09395689"/>
+    <origin xyz="0.5 0 0" rpy="0 0 -1.57079632679"/>
+  </joint>
+
+  <joint name="Joint_4_a" type="revolute">
+    <parent link="Link_3_a"/>
+    <child link="Link_4_a"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" lower="-3.14149265359" upper="3.14149265359" velocity="0.09395689"/>
+    <origin xyz="0 0.65 0" rpy="-1.57079632679 0 0"/>
+  </joint>
+
+  <joint name="Joint_5_a" type="revolute">
+    <parent link="Link_4_a"/>
+    <child link="Link_5_a"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" lower="-3.14149265359" upper="3.14149265359" velocity="0.09395689"/>
+    <origin xyz="0 0 -0.1" rpy="1.57079632679 0 0"/>
+  </joint>
+
+  <joint name="Joint_6_a" type="revolute">
+    <parent link="Link_5_a"/>
+    <child link="Link_6_a"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" lower="-3.14149265359" upper="3.14149265359" velocity="0.09395689"/>
+    <origin xyz="0 0.325 0" rpy="-1.57079632679 0 0"/>
+  </joint>
+  <joint name="joint_6-tool_a" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <parent link="Link_6_a"/>
+    <child link="tool_a"/>
+  </joint>
+
+<!-- leg_b -->
+  <joint name="Joint_1_b" type="revolute">
+    <parent link="Link_0"/>
+    <child link="Link_1_b"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" lower="-3.14149265359" upper="3.14149265359" velocity="0.09395689"/>
+    <origin xyz="-0.240  -0.41469 -0.064498" rpy="1.047197551 3.14149265359 -0.5236"/>
+  </joint>
+
+  <joint name="Joint_2_b" type="revolute">
+    <parent link="Link_1_b"/>
+    <child link="Link_2_b"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" lower="-3.14149265359" upper="3.14149265359" velocity="0.09395689"/>
+    <origin xyz="0 0 0" rpy="1.57079632679 -1.57079632679 0"/>
+  </joint>
+
+  <joint name="Joint_3_b" type="revolute">
+    <parent link="Link_2_b"/>
+    <child link="Link_3_b"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" lower="-3.14149265359" upper="3.14149265359" velocity="0.09395689"/>
+    <origin xyz="0.5 0 0" rpy="0 0 -1.57079632679"/>
+  </joint>
+
+  <joint name="Joint_4_b" type="revolute">
+    <parent link="Link_3_b"/>
+    <child link="Link_4_b"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" lower="-3.14149265359" upper="3.14149265359" velocity="0.09395689"/>
+    <origin xyz="0 0.65 0" rpy="-1.57079632679 0 0"/>
+  </joint>
+
+  <joint name="Joint_5_b" type="revolute">
+    <parent link="Link_4_b"/>
+    <child link="Link_5_b"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" lower="-3.14149265359" upper="3.14149265359" velocity="0.09395689"/>
+    <origin xyz="0 0 -0.1" rpy="1.57079632679 0 0"/>
+  </joint>
+
+  <joint name="Joint_6_b" type="revolute">
+    <parent link="Link_5_b"/>
+    <child link="Link_6_b"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" lower="-3.14149265359" upper="3.14149265359" velocity="0.09395689"/>
+    <origin xyz="0 0.325 0" rpy="-1.57079632679 0 0"/>
+  </joint>
+  <joint name="joint_6-tool_b" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <parent link="Link_6_b"/>
+    <child link="tool_b"/>
+  </joint>
+
+</robot>
