@@ -9,12 +9,12 @@
   <link name="Link_0">
     <visual>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/torso.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/torso.stl"/>
       </geometry>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/torso.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/torso.stl"/>
       </geometry>
     </collision>
     <inertial>
@@ -27,13 +27,13 @@
   <link name="Link_1_a">
     <visual>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link1.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link1.stl"/>
       </geometry>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link1.stl"/>
-      </geometry>
+        <mesh filename="/crawling_vispa_model/meshes/link1.stl"/>
+      </geometry>impl_f
     </collision>
     <inertial>
       <mass value="2.328"/>
@@ -45,12 +45,12 @@
   <link name="Link_2_a">
     <visual>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link2_0_5.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link2_0_5.stl"/>
       </geometry>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link2_0_5.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link2_0_5.stl"/>
       </geometry>
     </collision>
     <inertial>
@@ -63,12 +63,12 @@
   <link name="Link_3_a">
     <visual>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link3.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link3.stl"/>
       </geometry>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link3.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link3.stl"/>
       </geometry>
     </collision>
     <inertial>
@@ -81,12 +81,12 @@
   <link name="Link_4_a">
     <visual>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link4.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link4.stl"/>
       </geometry>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link4.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link4.stl"/>
       </geometry>
     </collision>
     <inertial>
@@ -99,12 +99,12 @@
   <link name="Link_5_a">
     <visual>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link5.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link5.stl"/>
       </geometry>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link5.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link5.stl"/>
       </geometry>
     </collision>
     <inertial>
@@ -117,12 +117,12 @@
   <link name="Link_6_a">
     <visual>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link6.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link6.stl"/>
       </geometry>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link6.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link6.stl"/>
       </geometry>
     </collision>
     <inertial>
@@ -138,12 +138,12 @@
   <link name="Link_1_b">
     <visual>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link1.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link1.stl"/>
       </geometry>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link1.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link1.stl"/>
       </geometry>
     </collision>
     <inertial>
@@ -156,12 +156,12 @@
   <link name="Link_2_b">
     <visual>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link2_0_5.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link2_0_5.stl"/>
       </geometry>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link2_0_5.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link2_0_5.stl"/>
       </geometry>
     </collision>
     <inertial>
@@ -174,12 +174,12 @@
   <link name="Link_3_b">
     <visual>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link3.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link3.stl"/>
       </geometry>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link3.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link3.stl"/>
       </geometry>
     </collision>
     <inertial>
@@ -192,12 +192,12 @@
   <link name="Link_4_b">
     <visual>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link4.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link4.stl"/>
       </geometry>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link4.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link4.stl"/>
       </geometry>
     </collision>
     <inertial>
@@ -210,12 +210,12 @@
   <link name="Link_5_b">
     <visual>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link5.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link5.stl"/>
       </geometry>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link5.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link5.stl"/>
       </geometry>
     </collision>
     <inertial>
@@ -228,12 +228,12 @@
   <link name="Link_6_b">
     <visual>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link6.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link6.stl"/>
       </geometry>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="/workspace/astrolabe_simulator/protos/crawling_vispa/protos/meshes/link6.stl"/>
+        <mesh filename="/crawling_vispa_model/meshes/link6.stl"/>
       </geometry>
     </collision>
     <inertial>
