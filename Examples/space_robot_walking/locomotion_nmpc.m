@@ -110,20 +110,18 @@ opt.constraints.control.lower = -control_constraints;
 
 % end point tracking constraint but overwritten by saturation inequality
 % constraint ! 
-% opt.constraints.general.function = @(x,varargin) x(:,end)-varargin{:};
-
-% opt.constraints.general.parameters  = {'Ref'};
-% opt.constraints.general.type        = 'equality';
-% opt.constraints.general.elements 	= 'end';
+opt.constraints.general.parameters  = {'Ref','nul'};
+opt.constraints.general.function{1} = @(x,varargin) x(:,end)-varargin{1};
+opt.constraints.general.type{1}        = 'equality';
+opt.constraints.general.elements{1} 	= 'end';
 
 % x(6+robot.n_q + 1:6+robot.n_q + 6,:) is xt_dot
 % x(6+robot.n_q+7:6+robot.n_q+ 6+robot.n_q,:)) is q_dot
 h_wheel_max = ones(6,1);
-opt.constraints.general.parameters  = {'nul'};
 fun = Function('fc',{[qt; q; qt_dot; qdot]},{(Ht*opt.model.states(6+robot.n_q + 1:6+robot.n_q + 6,:)+ Htq*opt.model.states(6+robot.n_q+7:6+robot.n_q+ 6+robot.n_q,:)) - h_wheel_max});
-opt.constraints.general.function = @(x,varargin) fun(x);
-opt.constraints.general.type        = 'inequality';
-opt.constraints.general.elements 	= 'N';
+opt.constraints.general.function{2} = @(x,varargin) fun(x);
+opt.constraints.general.type{2}        = 'inequality';
+opt.constraints.general.elements{2}	= 'N';
 
 % Define costs
 Qc = 100*eye(opt.n_states);
