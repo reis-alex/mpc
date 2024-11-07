@@ -63,9 +63,10 @@ H = GIM_NOC_sym(N,It,Iq,robot);
 C = CIM_NOC_sym(N,Ndot,tt,tq,It,Iq,robot);
 % H = [Ht, Htq; Htq.', H];
 % C = [Ct, Ctq; Ctq  , Cm];
-
+Ht = H(1:6,1:6);
+Htq = H(1:6, 7:end);
 % %Jacobian of the last link of last chain (it is docked
- [Jte, Jqe]=Jacob_sym(rL(1:3,end),rt,rL,Pt,pm,robot.n_links_joints,robot);
+[Jte, Jqe]=Jacob_sym(rL(1:3,end),rt,rL,Pt,pm,robot.n_links_joints,robot);
 
 %% systems dynamics
 invH = simplify(inv(H)); %solve(M, SX.eye(M.size1())); % check inv in casadi in python api 
@@ -82,8 +83,8 @@ opt.N = 10;
 opt.dt = 0.1;
 opt.n_controls  = n_q;
 opt.n_states    = 2*(6+n_q);
-opt.model.function = [[qt_dot; qdot]; epsilon_ddot];
-opt.model.states   =  [qt; q; qt_dot; qdot];
+opt.model.function = [[qt_dot; qdot]; epsilon_ddot(qt, q)];
+opt.model.states   = [qt; q; qt_dot; qdot];
 opt.model.controls = [tau_q];
 opt.continuous_model.integration = 'euler';
 
@@ -106,14 +107,21 @@ opt.constraints.states.lower  = -state_constraints;
 control_constraints = ones(opt.n_controls,1);
 opt.constraints.control.upper =  control_constraints;
 opt.constraints.control.lower = -control_constraints;
-% opt.constraints.general.function = @(x,varargin) x(:,end)-varargin{:};
-% 
-% opt.constraints.general.parameters  = {'Ref'};
-% opt.constraints.general.type        = 'equality';
-% opt.constraints.general.elements 	= 'end';
-h_wheel_max
-opt.constraints.general.function = @(x) H*x(:,end)-h_wheel_max;
-opt.constraints.general.parameters  = {'x'};
+
+% end point tracking constraint but overwritten by saturation inequality
+% constraint ! 
+opt.constraints.general.function = @(x,varargin) x(:,end)-varargin{:};
+
+opt.constraints.general.parameters  = {'Ref'};
+opt.constraints.general.type        = 'equality';
+opt.constraints.general.elements 	= 'end';
+
+% x(6+robot.n_q + 1:6+robot.n_q + 6,:) is xt_dot
+% x(6+robot.n_q+7:6+robot.n_q+ 6+robot.n_q,:)) is q_dot
+h_wheel_max = ones(6,1);
+htf = Function('f',{[qt; q]},{Ht});
+htqf = Function('f',{[qt; q]},{Htq});
+opt.constraints.general.function = @(x, varargin) (Ht(x(1:18))*x(6+robot.n_q + 1:6+robot.n_q + 6,:)+ Htq*x(6+robot.n_q+7:6+robot.n_q+ 6+robot.n_q,:)) - h_wheel_max;
 opt.constraints.general.type        = 'inequality';
 opt.constraints.general.elements 	= 'N';
 
@@ -123,7 +131,7 @@ Rc = 0.1*eye(opt.n_controls);
 %K_om = 10e6;
 
 opt.costs.stage.parameters = {'Ref'};
-opt.costs.stage.function = @(x,u,varargin) (x-varargin{:}(1:opt.n_states))'*Qc*(x-varargin{:}(1:opt.n_states)) + ...
+opt.costs.stage.function = @(x,u,varargin) (x-varargin{:})'*Qc*(x-varargin{:}) + ...
                                            u'*Rc*u;
                                        
 % Define inputs to optimization

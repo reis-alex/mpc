@@ -84,13 +84,13 @@ opt.dt = 0.1;
 opt.n_controls  = n_q;
 opt.n_states    = 2*(6+n_q);
 opt.model.function = [[qt_dot; qdot]; epsilon_ddot];
-opt.model.states   =  [qt; q; qt_dot; qdot];
+opt.model.states   = [qt; q; qt_dot; qdot];
 opt.model.controls = [tau_q];
 opt.continuous_model.integration = 'euler';
 
 % Define parameters
-opt.parameters.name = {'Ref'};
-opt.parameters.dim = [opt.n_states 1];
+opt.parameters.name = {'Ref','nul'};
+opt.parameters.dim = [opt.n_states 1'; 1 1];
 
 % control and state constraints
 Theta = pi/4*ones(3,1);
@@ -110,17 +110,18 @@ opt.constraints.control.lower = -control_constraints;
 
 % end point tracking constraint but overwritten by saturation inequality
 % constraint ! 
-opt.constraints.general.function = @(x,varargin) x(:,end)-varargin{:};
+% opt.constraints.general.function = @(x,varargin) x(:,end)-varargin{:};
 
-opt.constraints.general.parameters  = {'Ref'};
-opt.constraints.general.type        = 'equality';
-opt.constraints.general.elements 	= 'end';
+% opt.constraints.general.parameters  = {'Ref'};
+% opt.constraints.general.type        = 'equality';
+% opt.constraints.general.elements 	= 'end';
 
 % x(6+robot.n_q + 1:6+robot.n_q + 6,:) is xt_dot
 % x(6+robot.n_q+7:6+robot.n_q+ 6+robot.n_q,:)) is q_dot
 h_wheel_max = ones(6,1);
-opt.constraints.general.function = @(x, varargin) (Ht*x(6+robot.n_q + 1:6+robot.n_q + 6,:)+ Htq*x(6+robot.n_q+7:6+robot.n_q+ 6+robot.n_q,:)) - h_wheel_max;
-opt.constraints.general.parameters  = {'x'};
+opt.constraints.general.parameters  = {'nul'};
+fun = Function('fc',{[qt; q; qt_dot; qdot]},{(Ht*opt.model.states(6+robot.n_q + 1:6+robot.n_q + 6,:)+ Htq*opt.model.states(6+robot.n_q+7:6+robot.n_q+ 6+robot.n_q,:)) - h_wheel_max});
+opt.constraints.general.function = @(x,varargin) fun(x);
 opt.constraints.general.type        = 'inequality';
 opt.constraints.general.elements 	= 'N';
 
@@ -130,7 +131,7 @@ Rc = 0.1*eye(opt.n_controls);
 %K_om = 10e6;
 
 opt.costs.stage.parameters = {'Ref'};
-opt.costs.stage.function = @(x,u,varargin) (x-varargin{:}(1:opt.n_states))'*Qc*(x-varargin{:}(1:opt.n_states)) + ...
+opt.costs.stage.function = @(x,u,varargin) (x-varargin{:})'*Qc*(x-varargin{:}) + ...
                                            u'*Rc*u;
                                        
 % Define inputs to optimization
