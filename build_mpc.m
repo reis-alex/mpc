@@ -25,7 +25,8 @@ end
 if isfield(opt.costs.stage,'parameters')
     parameters_stc = [];
     for i = 1:length(opt.costs.stage.parameters)
-        parameters_stc = [parameters_stc; parameters{find(strcmp(opt.costs.stage.parameters{i},opt.parameters.name))}];
+%         parameters_stc = [parameters_stc; parameters{find(strcmp(opt.costs.stage.parameters{i},opt.parameters.name))}]
+        parameters_stc{i} = parameters{find(strcmp(opt.costs.stage.parameters{i},opt.parameters.name))};
     end
 end
 
@@ -33,7 +34,8 @@ end
 if isfield(opt.costs,'terminal') && isfield(opt.costs.terminal,'parameters')
     parameters_trc = []; 
     for i = 1:length(opt.costs.terminal.parameters)
-        parameters_trc = [parameters_trc; parameters{find(strcmp(opt.costs.terminal.parameters{i},opt.parameters.name))}];
+%         parameters_trc = [parameters_trc; parameters{find(strcmp(opt.costs.terminal.parameters{i},opt.parameters.name))}];
+        parameters_trc{i} = parameters{find(strcmp(opt.costs.terminal.parameters{i},opt.parameters.name))};
     end
 end
 
@@ -49,7 +51,8 @@ end
 if isfield(opt.constraints,'general') && isfield(opt.constraints.general,'parameters')
     parameters_gc = []; 
     for i = 1:length(opt.constraints.general.parameters)
-        parameters_gc = [parameters_gc; parameters{find(strcmp(opt.constraints.general.parameters{i},opt.parameters.name))}];
+%         parameters_gc = [parameters_gc; parameters{find(strcmp(opt.constraints.general.parameters{i},opt.parameters.name))}];
+        parameters_gc{i} = parameters{find(strcmp(opt.constraints.general.parameters{i},opt.parameters.name))};
     end
 end
 
@@ -65,11 +68,13 @@ end
 if isfield(opt,'input')
     parameters_input = [];
     for i = 1:length(opt.input.vector)
-        parameters_input = [parameters_input; parameters{find(strcmp(opt.input.vector{i},opt.parameters.name))}];
+%         parameters_input = [parameters_input; parameters{find(strcmp(opt.input.vector{i},opt.parameters.name))}];
+          parameters_input{i} = parameters{find(strcmp(opt.input.vector{i},opt.parameters.name))};
     end
     if isfield(opt.input,'matrix')
-        for i = 1:length(opt.input.matrix)
-            parameters_input = [parameters_input; parameters{find(strcmp(opt.input.matrix{i},opt.parameters.name))}];
+        for j = i+1:i+length(opt.input.matrix)
+%             parameters_input = [parameters_input; parameters{find(strcmp(opt.input.matrix{i},opt.parameters.name))}];
+            parameters_input{j} = parameters{find(strcmp(opt.input.matrix{j-i},opt.parameters.name))};
         end
     end
 end
@@ -144,18 +149,29 @@ if isfield(opt,'continuous_model')
             end
         case 'euler'
             for k = 1:opt.N
-                obj             = obj + stagecost_fun(X(:,k),U(:,k),parameters_stc);
+                obj             = obj + stagecost_fun(X(:,k),U(:,k),parameters_stc{:});
                 f_value         = f(X(:,k),U(:,k));
                 st_next_euler   = integ(X(:,k),opt.dt,f_value);
                 g               = [g; X(:,k+1)-st_next_euler]; 
             end
     end
 else % if the model is already discrete
-    for k = 1:opt.N
-        obj             = obj + stagecost_fun(X(:,k),U(:,k),parameters_stc);
-        f_value         = f(X(:,k),U(:,k));
-        st_next         = integ(X(:,k),opt.dt,f_value);
-        g               = [g; X(:,k+1)-st_next];
+    if isfield(opt.costs.stage,'sort_parameter')
+        stc_fixed = opt.costs.stage.sort_parameter.fixed;
+        stc_var = opt.costs.stage.sort_parameter.var;
+        for k = 1:opt.N
+            obj             = obj + stagecost_fun(X(:,k),U(:,k),parameters_stc{[stc_fixed stc_var(k,:)]});
+            f_value         = f(X(:,k),U(:,k));
+            st_next         = integ(X(:,k),opt.dt,f_value);
+            g               = [g; X(:,k+1)-st_next];
+        end
+    else
+        for k = 1:opt.N
+            obj             = obj + stagecost_fun(X(:,k),U(:,k),parameters_stc{:});
+            f_value         = f(X(:,k),U(:,k));
+            st_next         = integ(X(:,k),opt.dt,f_value);
+            g               = [g; X(:,k+1)-st_next];
+        end
     end
 end
         
@@ -177,7 +193,7 @@ end
 % if terminal costs and constraints
 if isfield(opt,'constraints') && isfield(opt.constraints,'terminal') && isfield(opt.constraints.terminal,'parameters')
     g   = [g; opt.constraints.terminal.set.A*vertcat(X(:,end),parameters_tc)-opt.constraints.terminal.set.b];
-    obj = obj + opt.costs.terminal.function(X(:,end),parameters_trc);
+    obj = obj + opt.costs.terminal.function(X(:,end),parameters_trc{:});
 else
     if isfield(opt,'constraints') && isfield(opt.constraints,'terminal')
         g   = [g; opt.constraints.terminal.set.A*X(:,end)-opt.constraints.terminal.set.b];
@@ -188,15 +204,16 @@ end
 
 % if there are general constraints
 if isfield(opt,'constraints') && isfield(opt.constraints,'general')
+    size_gc = 0;
     switch opt.constraints.general.elements
         case 'N'
             for i = 1:opt.N
-                g = [g; opt.constraints.general.function(X(:,i),parameters_gc)];
+                g = [g; opt.constraints.general.function(X(:,i),parameters_gc{:})];
+                size_gc = size_gc + length(opt.constraints.general.function(X(:,i),parameters_gc{:}));
             end
-            lengthgc = opt.N*length(opt.constraints.general.function(X(:,i),parameters_gc));
         case 'end'
-            g = [g; opt.constraints.general.function(X(:,end),parameters_gc)];
-            lengthgc = length(opt.constraints.general.function(X(:,end),parameters_gc));
+            g = [g; opt.constraints.general.function(X(:,end-1),parameters_gc{:})];
+                size_gc = size_gc +  length(opt.constraints.general.function(X(end,i),parameters_gc{:}));
     end
 end
 
@@ -223,7 +240,8 @@ end
 Param = [Init_states];
 if isfield(opt,'input')
     if isfield(opt.input,'vector')
-        Param = [Param; parameters_input];
+%         Param = [Param; [parameters_input{:}]];
+        Param = [Param; vertcat(parameters_input{:})];
     end
 % if there are any input to general constraints
     if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'matrix')
@@ -277,16 +295,15 @@ end
 
 % if general constraints
 if isfield(opt.constraints,'general')
+
     switch opt.constraints.general.type
         case 'inequality'
             bound_gc = -inf;
         case 'equality'
             bound_gc = 0;
     end
-%     args.lbg(length(args.ubg)+1:length(args.ubg)+opt.N*opt.parameters.dim(end,1)) = bound_gc;
-%     args.ubg(length(args.ubg)+1:length(args.ubg)+opt.N*opt.parameters.dim(end,1)) = 0;
-    args.lbg(length(args.ubg)+1:length(args.ubg)+lengthgc) = bound_gc;
-    args.ubg(length(args.ubg)+1:length(args.ubg)+lengthgc) = 0;
+    args.lbg(length(args.ubg)+1:length(args.ubg)+size_gc) = bound_gc;
+    args.ubg(length(args.ubg)+1:length(args.ubg)+size_gc) = 0;
 end
 
 %% inequality constraints
@@ -348,7 +365,7 @@ end
 opts                        = struct;
 switch opt.solver
     case 'ipopt'
-        opts.ipopt.max_iter         = 200;
+        opts.ipopt.max_iter         = 400;
         opts.ipopt.print_level      = 0;
         opts.print_time             = 0;
         opts.ipopt.acceptable_tol   = 1e-8;
