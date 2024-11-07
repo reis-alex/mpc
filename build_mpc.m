@@ -205,15 +205,17 @@ end
 % if there are general constraints
 if isfield(opt,'constraints') && isfield(opt.constraints,'general')
     size_gc = 0;
-    switch opt.constraints.general.elements
-        case 'N'
-            for i = 1:opt.N
-                g = [g; opt.constraints.general.function(X(:,i),parameters_gc{:})];
-                size_gc = size_gc + length(opt.constraints.general.function(X(:,i),parameters_gc{:}));
-            end
-        case 'end'
-            g = [g; opt.constraints.general.function(X(:,end-1),parameters_gc{:})];
-                size_gc = size_gc +  length(opt.constraints.general.function(X(end,i),parameters_gc{:}));
+    for jj = 1:length(opt.constraints.general.function)
+        switch opt.constraints.general.elements{jj}
+            case 'N'
+                for i = 1:opt.N
+                    g = [g; opt.constraints.general.function{jj}(X(:,i),parameters_gc{:})];
+                    size_gc = size_gc + length(opt.constraints.general.function{jj}(X(:,i),parameters_gc{:}));
+                end
+            case 'end'
+                g = [g; opt.constraints.general.function{jj}(X(:,end-1),parameters_gc{:})];
+                size_gc = size_gc +  length(opt.constraints.general.function{jj}(X(end,i),parameters_gc{:}));
+        end
     end
 end
 
@@ -295,15 +297,16 @@ end
 
 % if general constraints
 if isfield(opt.constraints,'general')
-
-    switch opt.constraints.general.type
-        case 'inequality'
-            bound_gc = -inf;
-        case 'equality'
-            bound_gc = 0;
+    for j = 1:length(opt.constraints.general.function)
+        switch opt.constraints.general.type{j}
+            case 'inequality'
+                bound_gc = -inf;
+            case 'equality'
+                bound_gc = 0;
+        end
+        args.lbg(length(args.ubg)+1:length(args.ubg)+size_gc) = bound_gc;
+        args.ubg(length(args.ubg)+1:length(args.ubg)+size_gc) = 0;
     end
-    args.lbg(length(args.ubg)+1:length(args.ubg)+size_gc) = bound_gc;
-    args.ubg(length(args.ubg)+1:length(args.ubg)+size_gc) = 0;
 end
 
 %% inequality constraints
