@@ -204,17 +204,18 @@ end
 
 % if there are general constraints
 if isfield(opt,'constraints') && isfield(opt.constraints,'general')
-    size_gc = 0;
+    
     for jj = 1:length(opt.constraints.general.function)
+        size_gc{jj} = 0;
         switch opt.constraints.general.elements{jj}
             case 'N'
                 for i = 1:opt.N
                     g = [g; opt.constraints.general.function{jj}(X(:,i),parameters_gc{:})];
-                    size_gc = size_gc + length(opt.constraints.general.function{jj}(X(:,i),parameters_gc{:}));
+                    size_gc{jj} = size_gc{jj} + length(opt.constraints.general.function{jj}(X(:,i),parameters_gc{:}));
                 end
             case 'end'
-                g = [g; opt.constraints.general.function{jj}(X(:,end-1),parameters_gc{:})];
-                size_gc = size_gc +  length(opt.constraints.general.function{jj}(X(end,i),parameters_gc{:}));
+                g = [g; opt.constraints.general.function{jj}(X(:,end-1),parameters_gc{:})]; %why end-1? bc it is x(N)
+                size_gc{jj} = size_gc{jj} +  length(opt.constraints.general.function{jj}(X(:,end-1),parameters_gc{:}));
         end
     end
 end
@@ -304,8 +305,8 @@ if isfield(opt.constraints,'general')
             case 'equality'
                 bound_gc = 0;
         end
-        args.lbg(length(args.ubg)+1:length(args.ubg)+size_gc) = bound_gc;
-        args.ubg(length(args.ubg)+1:length(args.ubg)+size_gc) = 0;
+        args.lbg(length(args.ubg)+1:length(args.ubg)+size_gc{j}) = bound_gc;
+        args.ubg(length(args.ubg)+1:length(args.ubg)+size_gc{j}) = 0;
     end
 end
 
@@ -362,7 +363,11 @@ end
 if (length(OPT_variables)~=length(args.lbx))
     error('MPC error: Number of variables and respective bounds are different')
 end
-
+if (length(g)~=length(args.lbg))
+    error('MPC error: Number of constraints(g) and respective bounds (lbg or ubg) are different')
+end
+args.vars{1} = OPT_variables;
+args.vars{2} = Param;
 
 %% generate solver
 opts                        = struct;
