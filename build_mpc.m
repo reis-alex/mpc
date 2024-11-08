@@ -8,17 +8,21 @@ import casadi.*
 %% Gather all parameters (decision variables, inputs - everything that becomes SX.sym)
 
 if isfield(opt,'parameters')
-    parameters{1} = []; 
-        for i = [find(opt.parameters.dim(:,2)==1)]'
-            parameters{i} = SX.sym(opt.parameters.name{i},opt.parameters.dim(i,1),1);
-        end
+    if length(opt.parameters.dim)~=length(opt.parameters.name )
+        error('MPC error: mismatching number of parameters and corresponding dimension (opt.parameters.dim)')
+    end
+    parameters{1} = [];
+    for i = [find(opt.parameters.dim(:,2)==1)]'
+        parameters{i} = SX.sym(opt.parameters.name{i},opt.parameters.dim(i,1),1);
+    end
 
-        for i = [find(opt.parameters.dim(:,2)~=1)]'
-            parameters{i} = reshape(SX.sym(opt.parameters.name{i},opt.parameters.dim(i,1),opt.parameters.dim(i,2)),opt.parameters.dim(i,2)*opt.parameters.dim(i,1),1);
-        end
+    for i = [find(opt.parameters.dim(:,2)~=1)]'
+        parameters{i} = reshape(SX.sym(opt.parameters.name{i},opt.parameters.dim(i,1),opt.parameters.dim(i,2)),opt.parameters.dim(i,2)*opt.parameters.dim(i,1),1);
+    end
 else
     parameters{1} = [];
 end
+
 
 % sort all parameters and their destinations
 % parameters for stage cost
@@ -27,6 +31,14 @@ if isfield(opt.costs.stage,'parameters')
     for i = 1:length(opt.costs.stage.parameters)
 %         parameters_stc = [parameters_stc; parameters{find(strcmp(opt.costs.stage.parameters{i},opt.parameters.name))}]
         parameters_stc{i} = parameters{find(strcmp(opt.costs.stage.parameters{i},opt.parameters.name))};
+    end
+end
+
+% parameters for general cost
+if isfield(opt.costs,'general') && isfield(opt.costs.general,'parameters')
+    parameters_gnc = [];
+    for i = 1:length(opt.costs.general.parameters)
+        parameters_gnc{i} = parameters{find(strcmp(opt.costs.general.parameters{i},opt.parameters.name))};
     end
 end
 
@@ -174,7 +186,11 @@ else % if the model is already discrete
         end
     end
 end
-        
+
+% if extra cost
+if isfield(opt.costs,'general')
+    obj = obj + opt.costs.general.function(X,parameters_gnc{:});
+end
 
 %%
 % if constraints in states are polyhedral
