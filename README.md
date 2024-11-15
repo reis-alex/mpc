@@ -81,6 +81,8 @@ Later, to introduce these variables in the MPC (_e.g., in constraints or cost fu
 
 ### Constraints
 
+#### Bound constraints
+
 The field _opt.constraints_ gathers the constraints to be imposed to the optimization problem.
 
 * ```opt.constraints.state.upper``` and ```opt.constraints.state.lower```: variable-wise, upper and lower bounds for the states. The expected argument are vectors with the dimensions ```opt.n_states```.
