@@ -21,15 +21,17 @@ Some examples are available.
 
 ## Options
 
+All options for building the MPC controller need to be passed through the structure ```opt```, whose fields are described in the following.
+
 ### Modeling
 
-The following lists the options possible (some are mandatory):
-
-* Number of states, inputs and the prediction horizon: _opt.n_states_, _opt.n_controls_ and _opt.N_, respectively.
-* The function describing the dynamical system is to be provided through _opt.model.function_. There are two ways to define this function:
+* ```opt.n_states```: number of states
+* ```opt.n_controls```: number of controlled inputs
+* ```opt.model.function```: system model. There are two ways to define this function:
     	1. As a function handle, _e.g._, ``@(x,u) A*x+B*u`` (note that the order of $x$ and $u$ must be respected)
 	2. As a CasADi function, depending on variables SX.sym. Note that in this case, the state and input vector must be provided through _opt.model.states_ and _opt.model.controls_.
-* If the system is in *continuous time*, a field _opt.continuous_model_ is expected. This field contains _opt.continuous_model.integration_, which defines the integration scheme to be undertaken to cast the prediction and the options are "euler" and "RK4" (fourth-order Runge Kutta), and _opt.dt_, which is the time step.
+* ```opt.continuous_model_ ```: if the mode is in continuous time, the field ```opt.continuous_model.integration``` must be provided with the integration scheme to be undertaken when casting the prediction. The options are "euler" and "RK4" (fourth-order Runge Kutta)
+* ```opt.dt```: time step for the integration scheme
 
 Example:
 
