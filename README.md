@@ -158,7 +158,9 @@ opt.constraints.general.elements{1} = 'N';
 opt.constraints.general.type{1} = 'equality';
 ```
 
-### Stage costs
+### Cost functions
+
+#### Stage costs
 
 These terms relate to state and control variables at each step over the prediction horizon (not at end-point, see *Terminal elements* below). The stage cost components are to be provided through _opt.costs.stage_:
 
@@ -183,7 +185,7 @@ opt.costs.stage.function = @(x,u,varargin) (x-varargin{:})'*Q*(x-varargin{:}) + 
 opt.costs.stage.parameters = {'p'};
 ```
 
-### Terminal costs
+#### Terminal costs
 
 These terms relate to state and control variables at the end of the prediction horizon (terminal point). The terminal ingredients are to be provided through _opt.costs.terminal_:
 
@@ -200,3 +202,5 @@ opt.parameters.dim = [opt.n_states 1; opt.n_states 1];
 opt.costs.terminal.parameters = {'xs','Ref'};
 opt.costs.terminal.function = @(x,varargin) (x-varargin{:}(1:4))'*P*(x-varargin{:}(1:4)) + (varargin{:}(1:4)-varargin{:}(5:8))'*T*(varargin{:}(1:4)-varargin{:}(5:8))
 ```
+
+#### General costs
