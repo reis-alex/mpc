@@ -67,20 +67,24 @@ opt.dt		= 0.1;
 
 Parameters are any decision variable to the optimization problem, or any input that is to be provided to the MPC online (references, for instance). The structure ``opt.parameters`` gathers all parameters to be declared by name and by dimension, _e.g._,
 
+* ```opt.parameters.name```: holds the name of all parameters, independently of where they will appear in the MPC structure.
+* ```opt.parameters.dim```: holds the dimension of each parameter, in the order they apppear in ```opt.parameters.name```. If the parameter is a vector, the dimension expected is ```[rows 1]```, whereas if it is a matrix, ```[rows columns]```.
+
+Example: let the parameters be four decision variables: $x_s\in\mathbb{R}^2$,  $u_s\in\mathbb{R}$, _ref_$\in\mathbb{R}^2$, $b\in\mathbb{R}^10$, and $A\in\mathbb{R}^{10\times 2}$.
+
 ```matlab
 opt.parameters.name = {'xs','us','ref','b','A'};
 opt.parameters.dim = [2 1; 1 1; 2 1; 10 1; 10 2];
 ```
 
-In the example above, we declare four variables: $x_s\in\mathbb{R}^2$,  $u_s\in\mathbb{R}$, _ref_$\in\mathbb{R}^2$, $b\in\mathbb{R}^10$, and $A\in\mathbb{R}^{10\times 2}$. Note that each line in ``opt.parameters.dim`` gathers the dimensions for each variable *in the order* declared in ``opt.parameters.name``.
-
-Later, to introduce these variables in constraints or cost functions, one will just refer to the names listed in ``opt.parameters.name``.
+Later, to introduce these variables in the MPC (_e.g., in constraints or cost functions), one will just refer to the names listed in ``opt.parameters.name``.
 
 ### Constraints
 
-The field _opt.constraints_ gathers the constraints to be imposed to the optimization problem. The types of constraints supported are:
+The field _opt.constraints_ gathers the constraints to be imposed to the optimization problem.
 
-* Varible-wise bounds, provided through _opt.constraints.states.upper_ and _opt.constraints.states.lower_ for states, and _opt.constraints.control.upper_ and _opt.constraints.control.lower_ for the control inputs. These bounds must be given as a vector of appropriate dimensions (_i.e._, _opt.n_states_ and _opt.n_controls_).
+* ```opt.constraints.state.upper``` and ```opt.constraints.state.lower```: variable-wise, upper and lower bounds for the states. The expected argument are vectors with the dimensions ```opt.n_states```.
+* ```opt.constraints.controls.upper``` and ```opt.constraints.controls.lower```: variable-wise, upper and lower bounds for the control inputs. The expected argument are vectors with the dimensions ```opt.n_controls```.
 
 Example: Let $x\in\mathbb{R}^2$ and $u\in\mathbb{R}$. Define box-like constraints $\vert x_k\vert \leq 1$ and $\vert u_k\vert \leq 0.1$:
 
@@ -91,7 +95,7 @@ opt.constraints.control.upper =  0.1;
 opt.constraints.control.lower = -0.1
 ```
 
-* The state constraints can be polyhedral, _i.e._, $Ax\leq b$, and such an argument is to be provided through _opt.constraints.polyhedral_. This argument is expected to be composed of matrices $A$ and $b$.
+* ```opt.constraints.polyhedral```: define polyhedral constraints _i.e._, $Ax\leq b$. This argument is expected to be composed of matrices $A$ and $b$.
   * Note that _Polyhedron_ objects, as those created by the [MPT3 toolbox](https://www.mpt3.org/), are acceptable.
 
 Example: same as above, but with a polyhedral definition:
@@ -108,12 +112,13 @@ X = Polyhedron('A',vertcat(eye(opt.n_states),-eye(opt.n_states)),'b',ones(opt.n_
 opt.constraints.polyhedral.set = X;
 ```
 
-Terminal constraints (polyhedral or end-point) are possible, and should be provided through _opt.constraints.terminal_:
+* opt.constraints.parameters.variables
 
-* A set, in the form of a polyhedron (as above), is expected in _opt.constraints.terminal.set_, and the respective matrice A and b are needed (_i.e._, $Ax(N)\leq b$).
-* If any other parameters (seem as decision variables for the optimization problem) are to be terminally-constrained, they must be listed in _opt.constraints.terminal.parameters_.
+* ```opt.constraints.terminal```: define terminal constraints (either polyhedral or end-point). The expected arguments are:
+	* polyhedron (as above), passed directly through the field ```opt.constraints.terminal.set```
+	* matrices $A$ and $b$, to be passed through the fields ```opt.constraints.terminal.set.A``` and ```opt.constraints.terminal.set.b```
 
-If any other parameter/decision variable is to be constrained (not terminally), there is an option _opt.constraints.parameters.variables_.
+* opt.constraints.terminal.parameters```: used if any other parameter/decision variable is to be used in the terminal constraint.
 
 Example: consider a terminal constraint to be $x_N\in\Omega$, where $\Omega$ is a polyhedral set described such as $\Omega.A*x(N)\leq \Omega.b$.
 
