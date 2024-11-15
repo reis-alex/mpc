@@ -81,6 +81,11 @@ Later, to introduce these variables in the MPC (_e.g., in constraints or cost fu
 
 ### Constraints
 
+#### Constrained parameters
+
+* ```opt.constraints.parameters.variables```: gathers all parameters/decision variables that appear, somehow, in constraints.
+
+
 #### Bound constraints
 
 The field _opt.constraints_ gathers the constraints to be imposed to the optimization problem.
@@ -96,6 +101,8 @@ opt.constraints.states.lower = -[1 1];
 opt.constraints.control.upper =  0.1;
 opt.constraints.control.lower = -0.1
 ```
+
+#### Polyhedral constraints
 
 * ```opt.constraints.polyhedral```: define polyhedral constraints _i.e._, $Ax\leq b$. This argument is expected to be composed of matrices $A$ and $b$.
   * Note that _Polyhedron_ objects, as those created by the [MPT3 toolbox](https://www.mpt3.org/), are acceptable.
@@ -114,7 +121,7 @@ X = Polyhedron('A',vertcat(eye(opt.n_states),-eye(opt.n_states)),'b',ones(opt.n_
 opt.constraints.polyhedral.set = X;
 ```
 
-* ```opt.constraints.parameters.variables```: gathers all parameters/decision variables that appear, somehow, in constraints.
+#### Terminal constraints
 
 * ```opt.constraints.terminal```: define terminal constraints (either polyhedral or end-point). The expected arguments are:
 	* polyhedron (as above), passed directly through the field ```opt.constraints.terminal.set```
@@ -131,7 +138,7 @@ opt.constraints.terminal.set.b = Omega.b;
 Note that it can be similarly done using a Polyhedron object (see Section _Constraints_ above).
 
 
-### General constraints
+#### General constraints
 
 One can also define (multiple) general constraints, for instance, as nonlinear functions of the state, or dependent on external parameters (therefore, time-varying). The corresponding fields are:
 
