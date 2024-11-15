@@ -77,7 +77,7 @@ opt.parameters.name = {'xs','us','ref','b','A'};
 opt.parameters.dim = [2 1; 1 1; 2 1; 10 1; 10 2];
 ```
 
-Later, to introduce these variables in the MPC (_e.g., in constraints or cost functions), one will just refer to the names listed in ``opt.parameters.name``.
+Later, to introduce these variables in the MPC (_e.g., in constraints or cost functions), one will just refer to the names listed in ``opt.parameters.name``. *Important:* if any parameter is to be used in constraints, they should be listed in the field ```opt.constraints.parameters.variables``` (see below).
 
 ### Constraints
 
@@ -112,7 +112,7 @@ X = Polyhedron('A',vertcat(eye(opt.n_states),-eye(opt.n_states)),'b',ones(opt.n_
 opt.constraints.polyhedral.set = X;
 ```
 
-* opt.constraints.parameters.variables
+* ```opt.constraints.parameters.variables```: gathers all parameters/decision variables that appear, somehow, in constraints.
 
 * ```opt.constraints.terminal```: define terminal constraints (either polyhedral or end-point). The expected arguments are:
 	* polyhedron (as above), passed directly through the field ```opt.constraints.terminal.set```
@@ -131,44 +131,23 @@ Note that it can be similarly done using a Polyhedron object (see Section _Const
 
 ### General constraints
 
-These options relate to general state and control constraints, which can be, for instance, a nonlinear function of the state, or dependent on external parameters (therefore, time-varying).
+One can also define (multiple) general constraints, for instance, as nonlinear functions of the state, or dependent on external parameters (therefore, time-varying). The corresponding fields are:
 
-*Example* (non-linear constraint): suppose $x\in\mathbb{R}^2$ and define a nonlinear constraint such as $x_1^2 + x_2^2 \leq 1$:
+* ```opt.constraints.general.parameters```: list of all parameters used in the general constraints, if any.
+* ```opt.constraints.general.function{i}```: holds the function describing the constraint. 
+* ```opt.constraints.general.elements{i}```: indicate which elements of the predicted states are taken into account in the general constraint. It can be either ``` 'end' ```, for only the last predicted state, or ``` 'N' ```, for all the instances of the predicted states.
+* ```opt.constraints.general.type{i}```: indicate if the constraint is an ``` 'equality' ``` or an ``` 'inequality' ```.
 
-```matlab
-opt.constraints.general.function = @(x) x(1)^2+x(2)^2-1;
-```
+*Important remark:* note that some of the fields above *are arrays*, therefore ```{i}``` should be a integer number describing cardinality, starting from 1.
 
-*Example* (constraint dependent on external parameters): suppose $x\in\mathbb{R}^2$ (```opt.n_states=2```) and that the state is to be constrained by a polyhedral set that is updated with time, _e.g._, $A(k)x\leq b(k)$. 
-
-First, since the inputs ($A$ and $b$) are exclusively used in the general constraint, one should declare it in ``opt.parameters.name`` (see #Parameters). Clearly, since the MPC solver will not be updated afterwards, these input parameters have *fixed dimensions*, which we consider $10$ in this example:
-
-```matlab
-opt.n_states = 2;
-n_rows = 10;
-opt.parameters.name = {'A','b'};
-opt.parameters.dim = [n_rows opt.n_states; n_rows 1];
-
-```
-
-Now, declare the constraining function:
+*Example* (non-linear constraint): suppose $x\in\mathbb{R}^2$ and define a nonlinear constraint such as $x_1^2 + x_2^2 - p \leq 1$:
 
 ```matlab
-opt.constraints.general.parameters = {'A','b'}
-opt.constraints.general.function = @(x,varargin) (varargin{:}(1:n_rows,1) varargin{:}(n_rows+1:n_rows*2,1))*x - varargin{:}(n_rows*2+1:end);
+opt.constraints.general.parameters  = {'p'}
+opt.constraints.general.function{1} = @(x,varargin) x(1)^2+x(2)^2-varargin{1}-1;
+opt.constraints.general.elements{1} = 'N';
+opt.constraints.general.type{1} = 'equality';
 ```
-
-*Important:* since CasADi only accepts vectors as inputs, therefore any matrix input should be reshaped to a vector before parsing (see below), and should be reconstructed as a matrix fors its use *inside* for any function parsed to the solver. That is why, in the function above, one writes ``` (reshape(A,1:n_rows,1) reshape(A,n_rows+1:end,1)) ```.
-
-Finally, when passing it as arguments to the MPC solver, one does as follows:
-
-```matlab
-A = ones(10,2); % any matrix with proper dimensions
-b = ones(10,1); % any vector with proper dimensions
-args.p                  = [initial conditions; other_parameters; reshape(A,n_rows*opt.n_states,1); b];
-```
-
-Again, the _reshape_ function above is necessary since CasADi only takes vectors as inputs, therefore it is needed to concatenate the columns of A into a single vector. If the dimensions of the $A$ and $b$ changes at each iteration, an option is to declare _n_rows_ as a higher value and, online, complete the remaining rows of $A$ and $b$ with zeros.
 
 ### Stage costs
 
