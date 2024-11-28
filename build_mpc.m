@@ -8,7 +8,8 @@ import casadi.*
 %% Gather all parameters (decision variables, inputs - everything that becomes SX.sym)
 
 if isfield(opt,'parameters')
-    if length(opt.parameters.dim)~=length(opt.parameters.name )
+    [rows_p col_p] = size(opt.parameters.dim);
+    if rows_p~=length(opt.parameters.name )
         error('MPC error: mismatching number of parameters and corresponding dimension (opt.parameters.dim)')
     end
     parameters{1} = [];
