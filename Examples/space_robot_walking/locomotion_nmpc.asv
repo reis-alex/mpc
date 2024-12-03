@@ -151,8 +151,8 @@ opt.constraints.general.function{2} = @(x,varargin) fun(x);
 opt.constraints.general.type{2}        = 'inequality';
 opt.constraints.general.elements{2}	= 'N';
 
-% Define weights
-
+% Define costs
+%Qc = 100*eye(opt.n_states);
 Weight.xt = [10 10 10 10 10 10 ];
 Weight.q= ones(1, robot.n_q);
 Weight.xtdot = [10 10 10 0.1  0.1  0.1 ];

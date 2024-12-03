@@ -390,11 +390,11 @@ args.vars{2} = Param;
 opts                        = struct;
 switch opt.solver
     case 'ipopt'
-        opts.ipopt.max_iter         = 400;
+        opts.ipopt.max_iter         = 30;
         opts.ipopt.print_level      = 0;
         opts.print_time             = 0;
-        opts.ipopt.acceptable_tol   = 1e-8;
-        opts.ipopt.acceptable_obj_change_tol = 1e-8;
+        opts.ipopt.acceptable_tol   = 1e-4;
+        opts.ipopt.acceptable_obj_change_tol = 1e-4;
         solver = nlpsol('solver', 'ipopt',OPC,opts);
     case 'qpoases'
         options.terminationTolerance = 1e-8;
