@@ -2,7 +2,7 @@ import casadi.*
 clc
 clear
 close all
-%% Import robot 
+%% Import robot
 %--- URDF filename ---%
 
 %filename = 'VISPA_crawling.urdf';
@@ -21,7 +21,7 @@ n_w = SC.n_q; %number of wheels
 
 q_sym  = SX.sym('q', n_q,1);
 qdot_sym = SX.sym('qd',n_q,1);
-tau_q_sym = SX.sym('tau_q',n_q,1); 
+tau_q_sym = SX.sym('tau_q',n_q,1);
 
 % torso Euler angles and torso frame angular vel in XYZ convention
 Eul_ang_sym = SX.sym('theta', 3,1);
@@ -41,8 +41,8 @@ omega_tt_sym = SX.sym('omega_tt', 3,1);
 
 qt_dot_omega_sym = [omega_tt_sym ; rt_dot_sym];
 T_plate = [1 cos(phi)*tan(theta)  sin(phi)*tan(theta);
-           0 cos(phi)            -sin(phi);
-           0 sin(phi)/cos(theta)  cos(phi)/cos(theta)]; 
+    0 cos(phi)            -sin(phi);
+    0 sin(phi)/cos(theta)  cos(phi)/cos(theta)];
 
 qt_dot_sym = [ T_plate*omega_tt_sym; rt_dot_sym];
 %gen_vel = [qt_dot_omega_sym; qdot_sym];
@@ -63,7 +63,7 @@ Ndot = NOCdot_sym(rt_sym,t_t,rL,tq,Pt,pm,robot);
 [It,Iq]=I_I_sym(Rt_sym,RL,robot);
 
 %Generalized Inertia matrix
-H = GIM_NOC_sym(N,It,Iq,robot); 
+H = GIM_NOC_sym(N,It,Iq,robot);
 %Generalized Convective Inertia matrix
 C = CIM_NOC_sym(N,Ndot,t_t,tq,It,Iq,robot);
 % H = [Ht, Htq; Htq.', H];
@@ -74,10 +74,10 @@ Htq = H(1:6, 7:end);
 [Jte, Jqe]=Jacob_sym(rL(1:3,end),rt_sym,rL,Pt,pm,robot.n_links_joints,robot);
 
 % %% systems dynamics
-% invH = simplify(inv(H)); %solve(M, SX.eye(M.size1())); % check inv in casadi in python api 
+% invH = simplify(inv(H)); %solve(M, SX.eye(M.size1())); % check inv in casadi in python api
 % Qv = C*gen_vel;
 real_u = [SX.zeros(6,1); tau_q_sym];
-% 
+%
 % epsilon_ddot = invH*(real_u-Qv);
 % %
 % epsilon_ddot = simplify(epsilon_ddot);
@@ -92,7 +92,7 @@ J_star = [Jt_ee, Jq_ee];
 [Jtdot_ee, Jqdot_ee]   = Jacobdot_sym(rL(1:3,end_e),tq(:,end_e),rt_sym,t_t,rL,tq,Pt,pm,end_e,robot);
 J_star_dot = [Jtdot_ee, Jqdot_ee] ;
 
-%% FD with constraint 
+%% FD with constraint
 alpha = 15; %baumgarte velocity stabilizer term1
 gamma_holom = -J_star_dot*[qt_dot_omega_sym;qdot_sym] -2*alpha*J_star*[qt_dot_omega_sym;qdot_sym];
 
@@ -105,7 +105,7 @@ epsilon_ddot = full_acc_lambda(1:6+robot.n_q);
 
 %% MPC
 
-opt.N = 20;  
+opt.N = 20;
 opt.dt = 0.02;
 opt.n_controls  = n_q;
 opt.n_states    = 2*(6+n_q);
@@ -126,7 +126,7 @@ Thetad = 0.5*ones(3,1);
 V = 5*ones(3,1);
 Qd = 0.5*ones(n_q,1);
 
-state_constraints = [Theta; R; Q; Thetad; V; Qd]; 
+state_constraints = [Theta; R; Q; Thetad; V; Qd];
 opt.constraints.states.upper  =  state_constraints;
 opt.constraints.states.lower  = -state_constraints;
 
@@ -135,7 +135,7 @@ opt.constraints.control.upper =  control_constraints;
 opt.constraints.control.lower = -control_constraints;
 
 % end point tracking constraint but overwritten by saturation inequality
-% constraint ! 
+% constraint !
 opt.constraints.general.parameters  = {'Ref'};
 opt.constraints.general.function{1} = @(x,varargin) x(:,end)-varargin{1};
 opt.constraints.general.type{1}        = 'equality';
@@ -144,16 +144,16 @@ opt.constraints.general.elements{1} 	= 'end';
 % x(6+robot.n_q + 1:6+robot.n_q + 6,:) is xt_dot
 % x(6+robot.n_q+7:6+robot.n_q+ 6+robot.n_q,:)) is q_dot
 
-h_wheel_max = 10000*ones(6,1);
+h_wheel_max = 100*ones(6,1);
 
 fun = Function('fc',{[qt_sym; q_sym; qt_dot_omega_sym; qdot_sym]},{abs(Ht*opt.model.states(6+robot.n_q + 1:6+robot.n_q + 6,:)+ Htq*opt.model.states(6+robot.n_q+7:6+robot.n_q+ 6+robot.n_q,:)) - h_wheel_max});
 opt.constraints.general.function{2} = @(x,varargin) fun(x);
 opt.constraints.general.type{2}        = 'inequality';
 opt.constraints.general.elements{2}	= 'N';
 
-% Define costs
-%Qc = 100*eye(opt.n_states);
-Weight.xt = [10 10 10 10 10 10 ];
+% Define weights
+
+Weight.xt = 10*[10 10 10 10 10 10 ];
 Weight.q= ones(1, robot.n_q);
 Weight.xtdot = [10 10 10 0.1  0.1  0.1 ];
 Weight.qdot = 0.1*ones(1, robot.n_q);
@@ -165,8 +165,8 @@ Rc = 0.1*eye(opt.n_controls);
 
 opt.costs.stage.parameters = {'Ref'};
 opt.costs.stage.function = @(x,u,varargin) (x-varargin{:})'*Qc*(x-varargin{:}) + ...
-                                           u'*Rc*u;
-                                       
+    u'*Rc*u;
+
 % Define inputs to optimization
 opt.input.vector = {'Ref'};
 
@@ -189,12 +189,12 @@ robot_sim.id_EE = robot_sim.n_q;                       % Indice of the end-effec
 qw_init = zeros(SC.n_q, 1);
 Rs     = eye(3);                           % Sat's intial rotation from Rs to Rine
 rs     = zeros(3,1);                       % Sat's intial position in Rine
-xs0     = [0;0;0;zeros(3,1)];             % Sar's intial state=>[eulerXYZ;rt]  
-q_w0     = qw_init;                           % wheels's initial value  
+xs0     = [0;0;0;zeros(3,1)];             % Sar's intial state=>[eulerXYZ;rt]
+q_w0     = qw_init;                           % wheels's initial value
 qs_dot0     = zeros(6,1);                   % Sats's initial velocity in Rine
 
-qw_dot_init     = q_w0*0;                         % wheels' initial velocity in Rine                 
-qw = qw_init; 
+qw_dot_init     = q_w0*0;                         % wheels' initial velocity in Rine
+qw = qw_init;
 qs_dot = qs_dot0;
 qw_dot = qw_dot_init;
 
@@ -205,35 +205,41 @@ q_l= [0.4 -0.2 -0.98 3.35 0.36 0]';
 q_init = pi/4*ones(robot.n_q, 1);
 %q_init = [q_r; q_l];
 Rt     = eye(3);                            % Base's intial rotation from Rt to Rine
-rt    = zeros(3,1);                        % Base's intial position in Rine
-xt0     = [0;0;0;zeros(3,1)];               % Base's intial state=>[eulerXYZ;rt]  
-%q0     = q_init;                           % Actuators's initial value  
+%rt    = zeros(3,1);                        % Base's intial position in Rine
+rt    = [1000; 0; 0];
+xt0     = [0;0;0;zeros(3,1)];               % Base's intial state=>[eulerXYZ;rt]
+%q0     = q_init;                           % Actuators's initial value
 qt_dot0     = zeros(6,1);                   % Base's initial velocity in Rine
-q_dot_init     = q_init*0;                  % Actuators' initial velocity in Rine                 
-q_sym = q_init; 
+q_dot_init     = q_init*0;                  % Actuators' initial velocity in Rine
+q_sym = q_init;
 qt_dot_omega_sym = qt_dot0;
 q_dot = q_dot_init;
 
-                 % xsimu contains the history of states
+% xsimu contains the history of states
 u0 = zeros(opt.n_controls,opt.N);                % two control inputs for each robot
 X0 = zeros(opt.n_states*opt.N,1);   % initialization of the states decision variables for each shooting point
-%args.x0 = [X0;reshape(u0',opt.N,1);zeros(opt.n_states,1)]; 
+%args.x0 = [X0;reshape(u0',opt.N,1);zeros(opt.n_states,1)];
 
-xsimu(:,1) = [xt0; q_init; qt_dot0; q_dot_init];   
-args.x0 = [X0; reshape(u0',opt.N*opt.n_controls,1);zeros(opt.n_states,1)]; 
+xsimu(:,1) = [xt0; q_init; qt_dot0; q_dot_init];
+args.x0 = [X0; reshape(u0',opt.N*opt.n_controls,1);zeros(opt.n_states,1)];
 
 ref_theta = zeros(3,1); ref_rt = zeros(3,1); ref_omega = zeros(3,1); ref_q = 0.5*ones(robot.n_q,1); ref_rtdot = zeros(3,1); ref_qdot = zeros(n_q,1);
 yref = [ref_theta; ref_rt; ref_q; ref_omega; ref_rtdot; ref_qdot];
 
 args.p = [X0(:,1); yref];
-%% double check sol.x  = x0 for first solution 
+%% double check sol.x  = x0 for first solution
 tmax = 10;
 dt = opt.dt;
-time_vec = 1:dt:tmax;
+time_vec = 0:dt:tmax;
 disp("simulation starts !")
 tic
 for i = 1:length(time_vec)-1
-    ref_rt = [0.1*dt*i; 0; 0]; % linear position on x-axis reference
+
+    if i < 200
+        ref_rt = [0.1*dt*i; 0; 0]; % linear position on x-axis reference
+    else
+        ref_rt = [0.1*dt*200; 0; 0];
+    end
     ref_q = 0.4*pi*ones(robot.n_q,1);
 
     yref = [ref_theta; ref_rt; ref_q; ref_omega; ref_rtdot; ref_qdot];
@@ -244,57 +250,9 @@ for i = 1:length(time_vec)-1
 
     %% simulation here
     xsimu(:,i+1) = xpred(:,1);
-    
-    args.x0 = solx; 
+
+    args.x0 = solx;
 end
 toc
 refsimu(:,i+1) = refsimu(:,i);
-plot_solution()
-%% plot the nice results in gca
-% refsimu_q = refsimu(7:6+robot.n_q,:);
-% q = xsimu(7:6+robot.n_q,:);
-% 
-% figure(1)
-% plot(time_vec(:),q(:,:),'linewidth',1)
-% hold on
-% plot(time_vec(:), refsimu_q, '--', 'linewidth',1);
-% xlabel('t')
-% ylabel("q(t)")
-% grid on
-% set(gca,'fontsize',12)
-% set(gca,'fontweight','bold')
-% 
-% qdot = xsimu(12+robot.n_q+1 :12+2*robot.n_q,:);
-% 
-% figure(2)
-% plot(time_vec(:),qdot(:,:),'b','linewidth',1)
-% xlabel('t')
-% ylabel("qdot(t)")
-% grid on
-% set(gca,'fontsize',12)
-% set(gca,'fontweight','bold')
-% 
-% refsimu_qt = refsimu(1:6,:);
-% qt = xsimu(1:6,:);
-% 
-% figure(3)
-% plot(time_vec(:),qt(:,:),'linewidth',1)
-% hold on
-% plot(time_vec(:),refsimu_qt ,'--','linewidth',1)
-% xlabel('t')
-% ylabel("xt(t)")
-% grid on
-% set(gca,'fontsize',12)
-% set(gca,'fontweight','bold')
-% 
-% qt_dot = xsimu(6+robot.n_q+1 :6+robot.n_q+6 ,:);
-% 
-% figure(4)
-% plot(time_vec(:),qt_dot(:,:),'linewidth',1)
-% hold on
-% xlabel('t')
-% ylabel("xt(t)")
-% grid on
-% set(gca,'fontsize',12)
-% set(gca,'fontweight','bold')
-
+plot_solution(xsimu,time_vec,refsimu,robot)

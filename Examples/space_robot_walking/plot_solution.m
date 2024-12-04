@@ -10,7 +10,6 @@ size_line = 2;
 refsimu_q = refsimu(7:6+robot.n_q,:);
 q = xsimu(7:6+robot.n_q,:);
 
-
 figure(1)
 tl = 'q';
 plot(time_vec(:),q(:,:),'linewidth',1);
@@ -98,7 +97,7 @@ set(gca,'fontsize',12)
 set(gca,'fontweight','bold')
 
 
-figure(47)
+figure(7)
 tl = 'position torso 3D';
 title(tl,'Interpreter','latex','fontsize', size_tl);
 plot3(refsimu_xt(4,:),refsimu_xt(5,:),refsimu_xt(6,:), '--','linewidth',size_line);
