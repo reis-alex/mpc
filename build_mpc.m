@@ -152,7 +152,7 @@ if isfield(opt,'continuous_model')
     switch opt.continuous_model.integration
         case 'RK4'
             for k = 1:opt.N
-                obj             = obj + stagecost_fun(X(:,k),U(:,k),parameters_stc);
+                obj             = obj + stagecost_fun(X(:,k),U(:,k),parameters_stc{:});
                 k1 = f(X(:,k),U(:,k));
                 k2 = f(X(:,k)+opt.dt/2*k1,U(:,k));
                 k3 = f(X(:,k)+opt.dt/2*k2,U(:,k));
@@ -227,12 +227,12 @@ if isfield(opt,'constraints') && isfield(opt.constraints,'general')
         switch opt.constraints.general.elements{jj}
             case 'N'
                 for i = 1:opt.N
-                    g = [g; opt.constraints.general.function{jj}(X(:,i),U(:,i),parameters_gc{:})];
-                    size_gc{jj} = size_gc{jj} + length(opt.constraints.general.function{jj}(X(:,i),U(:,i),parameters_gc{:}));
+                    g = [g; opt.constraints.general.function{jj}(X(:,i),U(:,i),parameters_gc{:})]; %
+                    size_gc{jj} = size_gc{jj} + length(opt.constraints.general.function{jj}(X(:,i),U(:,i),parameters_gc{:})); %,U(:,i)
                 end
             case 'end'
-                g = [g; opt.constraints.general.function{jj}(X(:,end-1),parameters_gc{:})]; %why end-1? bc it is x(N)
-                size_gc{jj} = size_gc{jj} +  length(opt.constraints.general.function{jj}(X(:,end-1),parameters_gc{:}));
+                g = [g; opt.constraints.general.function{jj}(X(:,end-1),U(:,k),parameters_gc{:})]; %why end-1? bc it is x(N)
+                size_gc{jj} = size_gc{jj} +  length(opt.constraints.general.function{jj}(X(:,end-1),U(:,k),parameters_gc{:}));
         end
     end
 end
