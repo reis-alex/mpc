@@ -145,6 +145,18 @@ else
     stagecost_fun    = @(x,u,extra) x'*opt.costs.stage.Q*x + u'*opt.costs.stage.R*u + 0*extra;
 end
 
+% Determine if cost function parameters are static or iterated upon
+
+if isfield(opt.costs.stage,'sort_parameter')
+    stc_fixed = opt.costs.stage.sort_parameter.fixed;
+    stc_var = opt.costs.stage.sort_parameter.var;
+    stc_out = @(k) parameters_stc{[stc_fixed stc_var(k)]};
+else
+    for i = 1:length(opt.costs.stage.parameters)
+        stc_out{i} = vertcat(parameters_stc{i}(:));
+    end
+    stc_out = @(k) stc_out;
+end
 
 %% Prediction loop, integration schemes
 % prediction loop
@@ -152,40 +164,33 @@ if isfield(opt,'continuous_model')
     switch opt.continuous_model.integration
         case 'RK4'
             for k = 1:opt.N
-                obj             = obj + stagecost_fun(X(:,k),U(:,k),parameters_stc);
+                tmp = stc_out(k);
+                obj             = obj + stagecost_fun(X(:,k),U(:,k),tmp{:});
                 k1 = f(X(:,k),U(:,k));
                 k2 = f(X(:,k)+opt.dt/2*k1,U(:,k));
                 k3 = f(X(:,k)+opt.dt/2*k2,U(:,k));
                 k4 = f(X(:,k)+opt.dt*k3,U(:,k));
                 st_next_RK4   = integ(X(:,k),opt.dt,k1,k2,k3,k4);
-                g               = [g; X(:,k+1)-st_next_RK4]; 
+                g               = [g; X(:,k+1)-st_next_RK4];
             end
         case 'euler'
             for k = 1:opt.N
-                obj             = obj + stagecost_fun(X(:,k),U(:,k),parameters_stc{:});
+                tmp = stc_out(k);
+                obj             = obj + stagecost_fun(X(:,k),U(:,k),tmp{:});
+                obj             = obj + stagecost_fun(X(:,k),U(:,k),stc_fun(k));
                 f_value         = f(X(:,k),U(:,k));
                 st_next_euler   = integ(X(:,k),opt.dt,f_value);
-                g               = [g; X(:,k+1)-st_next_euler]; 
+                g               = [g; X(:,k+1)-st_next_euler];
             end
     end
 else % if the model is already discrete
-    if isfield(opt.costs.stage,'sort_parameter')
-        stc_fixed = opt.costs.stage.sort_parameter.fixed;
-        stc_var = opt.costs.stage.sort_parameter.var;
-        for k = 1:opt.N
-            obj             = obj + stagecost_fun(X(:,k),U(:,k),parameters_stc{[stc_fixed stc_var(k,:)]});
-            f_value         = f(X(:,k),U(:,k));
-            st_next         = integ(X(:,k),opt.dt,f_value);
-            g               = [g; X(:,k+1)-st_next];
-        end
-    else
-        for k = 1:opt.N
-            obj             = obj + stagecost_fun(X(:,k),U(:,k),parameters_stc{:});
-            f_value         = f(X(:,k),U(:,k));
-            st_next         = integ(X(:,k),opt.dt,f_value);
-            g               = [g; X(:,k+1)-st_next];
-        end
-    end
+                for k = 1:opt.N
+                    tmp = stc_out(k);
+                    obj             = obj + stagecost_fun(X(:,k),U(:,k),tmp{:});
+                    f_value         = f(X(:,k),U(:,k));
+                    st_next         = integ(X(:,k),opt.dt,f_value);
+                    g               = [g; X(:,k+1)-st_next];
+                end
 end
 
 % if extra cost
@@ -233,6 +238,9 @@ if isfield(opt,'constraints') && isfield(opt.constraints,'general')
             case 'end'
                 g = [g; opt.constraints.general.function{jj}(X(:,end-1),parameters_gc{:})]; %why end-1? bc it is x(N)
                 size_gc{jj} = size_gc{jj} +  length(opt.constraints.general.function{jj}(X(:,end-1),parameters_gc{:}));
+            case 'all'
+                g = [g; opt.constraints.general.function{jj}(X,parameters_gc{:})]; 
+                size_gc{jj} = size_gc{jj} +  length(opt.constraints.general.function{jj}(X,parameters_gc{:}));
         end
     end
 end
@@ -264,30 +272,30 @@ if isfield(opt,'input')
         Param = [Param; vertcat(parameters_input{:})];
     end
 % if there are any input to general constraints
-    if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'matrix')
-        aux = [];
-        for jj = 1:opt.input.general_constraints.matrix.dim(2)
-            aux = [aux; input_matrix(:,jj)];
-        end
-        Param = [Param; aux];
-    end
-    
-    if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'vector')
-        Param = [Param; input_vector];
-    end
+%     if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'matrix')
+%         aux = [];
+%         for jj = 1:opt.input.general_constraints.matrix.dim(2)
+%             aux = [aux; input_matrix(:,jj)];
+%         end
+%         Param = [Param; aux];
+%     end
+%     
+%     if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'vector')
+%         Param = [Param; input_vector];
+%     end
     
 % if there are any input to stage cost
-    if isfield(opt.input,'stage_costs') && isfield(opt.input.stage_costs,'matrix')
-        aux = [];
-        for jj = 1:opt.input.stage_costs.matrix.dim(2)
-            aux = [aux; input_matrix(:,jj)];
-        end
-        Param = [Param; aux];
-    end
-    
-    if isfield(opt.input,'stage_costs') && isfield(opt.input.stage_costs,'vector')
-        Param = [Param; input_vector];
-    end
+%     if isfield(opt.input,'stage_costs') && isfield(opt.input.stage_costs,'matrix')
+%         aux = [];
+%         for jj = 1:opt.input.stage_costs.matrix.dim(2)
+%             aux = [aux; input_matrix(:,jj)];
+%         end
+%         Param = [Param; aux];
+%     end
+%     
+%     if isfield(opt.input,'stage_costs') && isfield(opt.input.stage_costs,'vector')
+%         Param = [Param; input_vector];
+%     end
     
 end
 
@@ -395,7 +403,7 @@ switch opt.solver
         opts.print_time             = 0;
         opts.ipopt.acceptable_tol   = 1e-8;
         opts.ipopt.acceptable_obj_change_tol = 1e-8;
-        solver = nlpsol('solver', 'ipopt',OPC,opts);
+        solver = nlpsol('solver','ipopt',OPC,opts);
     case 'qpoases'
         options.terminationTolerance = 1e-8;
         options.boundTolerance = 1e-8;
@@ -404,3 +412,4 @@ switch opt.solver
         solver = qpsol('solver','qpoases',OPC,options);
 end
 
+end

@@ -4,8 +4,8 @@ import casadi.*
 
 
 robot_path = 'C:\Users\Alex Reis\Desktop\GitHub\mpc\Examples\inverted_pendulum\inverted_pend.urdf';
-robot = importrobot(robot_path);
-robot.DataFormat = 'row';
+% robot = importrobot(robot_path);
+% robot.DataFormat = 'row';
 robot_acceleration = urdf2casadi.Dynamics.symbolicForwardDynamics(robot_path,0);
 
 % define state variables
