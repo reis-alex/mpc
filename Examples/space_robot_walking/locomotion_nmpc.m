@@ -85,7 +85,7 @@ real_u = [SX.zeros(6,1); tau_q_sym];
 
 % Constraint build
 
-end_e =4;% effector body index in robot tree
+end_e =6;% effector body index in robot tree
 
 [Jt_ee, Jq_ee]=Jacob_sym(rL(1:3,end_e),rt_sym,rL,Pt,pm,end_e,robot);
 J_star = [Jt_ee, Jq_ee];
@@ -112,7 +112,7 @@ opt.n_states    = 2*(6+n_q);
 opt.model.function = [[qt_dot_sym; qdot_sym]; epsilon_ddot];
 opt.model.states   = [qt_sym; q_sym; qt_dot_omega_sym; qdot_sym];
 opt.model.controls = [tau_q_sym];
-opt.continuous_model.integration = 'euler';
+opt.continuous_model.integration = 'RK4';
 
 % Define parameters
 opt.parameters.name = {'Ref'};
@@ -137,7 +137,7 @@ opt.constraints.control.lower = -control_constraints;
 % end point tracking constraint but overwritten by saturation inequality
 % constraint !
 opt.constraints.general.parameters  = {'Ref'};
-opt.constraints.general.function{1} = @(x,varargin) x(:,end)-varargin{1};
+opt.constraints.general.function{1} = @(x,u,varargin) x(:,end)-varargin{1};
 opt.constraints.general.type{1}        = 'equality';
 opt.constraints.general.elements{1} 	= 'end';
 
@@ -147,7 +147,7 @@ opt.constraints.general.elements{1} 	= 'end';
 h_wheel_max = 100*ones(6,1);
 
 fun = Function('fc',{[qt_sym; q_sym; qt_dot_omega_sym; qdot_sym]},{abs(Ht*opt.model.states(6+robot.n_q + 1:6+robot.n_q + 6,:)+ Htq*opt.model.states(6+robot.n_q+7:6+robot.n_q+ 6+robot.n_q,:)) - h_wheel_max});
-opt.constraints.general.function{2} = @(x,varargin) fun(x);
+opt.constraints.general.function{2} = @(x,u,varargin) fun(x);
 opt.constraints.general.type{2}     = 'inequality';
 opt.constraints.general.elements{2}	= 'N';
 
@@ -256,8 +256,12 @@ end
 toc
 refsimu(:,i+1) = refsimu(:,i);
 [h_robot] = get_constraint_value_momentum(xsimu, robot, time_vec);
+[x_ee]    = get_end_effector_pose(xsimu,robot, time_vec);
 
 plot_solution(xsimu,time_vec,refsimu,robot)
 
 figure 
 plot(time_vec, abs(h_robot(1:3, :)));
+
+figure 
+plot(time_vec, x_ee);

@@ -227,8 +227,8 @@ if isfield(opt,'constraints') && isfield(opt.constraints,'general')
         switch opt.constraints.general.elements{jj}
             case 'N'
                 for i = 1:opt.N
-                    g = [g; opt.constraints.general.function{jj}(X(:,i),parameters_gc{:})];
-                    size_gc{jj} = size_gc{jj} + length(opt.constraints.general.function{jj}(X(:,i),parameters_gc{:}));
+                    g = [g; opt.constraints.general.function{jj}(X(:,i),U(:,i),parameters_gc{:})];
+                    size_gc{jj} = size_gc{jj} + length(opt.constraints.general.function{jj}(X(:,i),U(:,i),parameters_gc{:}));
                 end
             case 'end'
                 g = [g; opt.constraints.general.function{jj}(X(:,end-1),parameters_gc{:})]; %why end-1? bc it is x(N)
