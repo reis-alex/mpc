@@ -72,8 +72,8 @@ end
 % list parameters that are decision variables
 if isfield(opt.constraints,'parameters')
     parameters_const = [];
-    for i = 1:length(opt.constraints.parameters)
-        parameters_const = [parameters_const; parameters{find(strcmp(opt.constraints.parameters{i},opt.parameters.name))}];
+    for i = 1:length(opt.constraints.parameters.name)
+        parameters_const = [parameters_const; parameters{find(strcmp(opt.parameters.name,opt.constraints.parameters.name{i}))}];
     end
 end
 
@@ -94,21 +94,21 @@ end
 
 %% Modeling: generate states and control vectors, model function, integration
 states = [];
-controls = [];
+inputs = [];
 if ~isfield(opt.model,'states')
     for i = 1:opt.n_states
         states = [states; SX.sym(['x' int2str(i)])];
     end
     
     for i = 1:opt.n_controls
-        controls = [controls; SX.sym(['u' int2str(i)])];
+        inputs = [inputs; SX.sym(['u' int2str(i)])];
     end
-    model = opt.model.function(states,controls);
-    f = Function('f',{states,controls},{model}); 
+    model = opt.model.function(states,inputs);
+    f = Function('f',{states,inputs},{model}); 
 else
     states = opt.model.states;
-    controls = opt.model.controls;
-    f = Function('f',{states,controls},{opt.model.function}); 
+    inputs = opt.model.controls;
+    f = Function('f',{states,inputs},{opt.model.function}); 
 end
 
 
@@ -130,13 +130,17 @@ end
 
 %% Build prediction and cost function, initialize prediction
 
-U           = SX.sym('U',opt.n_controls,opt.N);         % Decision variables (controls)
+if isfield(opt.model,'sizeperturbation')
+    aux = parameters(strcmp(opt.parameters.name,'d'));
+    U           = vertcat(SX.sym('U',opt.n_controls,opt.N),reshape(aux{:},1,opt.N));
+else
+    U           = SX.sym('U',opt.n_controls,opt.N);         % Decision variables (controls)
+end
 Init_states = SX.sym('Init',opt.n_states); 
-X           = SX.sym('X',opt.n_states,(opt.N+1));       % A vector that represents the states over the optimization problem.
-
+X           = SX.sym('X',opt.n_states,(opt.N));       % A vector that represents the states over the optimization problem.
+X = horzcat(Init_states,X);
 obj         = 0;
-g           = [];
-g           = [g; X(:,1)-Init_states];                 
+g           = [];               
 
 % Determine the cost function to be used: simple quadratic or a custom
 if isfield(opt.costs.stage,'function')
@@ -146,47 +150,41 @@ else
 end
 
 % Determine if cost function parameters are static or iterated upon
-
 if isfield(opt.costs.stage,'sort_parameter')
     stc_fixed = opt.costs.stage.sort_parameter.fixed;
     stc_var = opt.costs.stage.sort_parameter.var;
-    stc_out = @(k) parameters_stc{[stc_fixed stc_var(k)]};
+    sort_param_stc = @(k) parameters_stc{[stc_fixed stc_var(k)]};
 else
-    for i = 1:length(opt.costs.stage.parameters)
-        stc_out{i} = vertcat(parameters_stc{i}(:));
+    if isfield(opt.costs.stage,'parameters')
+        sort_param_stc = @(k) vertcat(parameters_stc{:});
+    else
+        sort_param_stc = @(k) 0;
     end
-    stc_out = @(k) stc_out;
 end
 
 %% Prediction loop, integration schemes
 % prediction loop
+
 if isfield(opt,'continuous_model')
     switch opt.continuous_model.integration
         case 'RK4'
             for k = 1:opt.N
-                tmp = stc_out(k);
-                obj             = obj + stagecost_fun(X(:,k),U(:,k),tmp{:});
-                k1 = f(X(:,k),U(:,k));
-                k2 = f(X(:,k)+opt.dt/2*k1,U(:,k));
-                k3 = f(X(:,k)+opt.dt/2*k2,U(:,k));
-                k4 = f(X(:,k)+opt.dt*k3,U(:,k));
-                st_next_RK4   = integ(X(:,k),opt.dt,k1,k2,k3,k4);
-                g               = [g; X(:,k+1)-st_next_RK4];
+                obj             = obj + stagecost_fun(X(:,k),U(1:opt.n_controls,k),sort_param_stc(k));
+                k1 = f(X(:,k),U(1:opt.n_controls,k));
+                k2 = f(X(:,k)+opt.dt/2*k1,U(1:opt.n_controls,k));
+                k3 = f(X(:,k)+opt.dt/2*k2,U(1:opt.n_controls,k));
+                k4 = f(X(:,k)+opt.dt*k3,U(1:opt.n_controls,k));
+                g             = [g; X(:,k+1)-integ(X(:,k),opt.dt,k1,k2,k3,k4)]; 
             end
         case 'euler'
-            for k = 1:opt.N
-                tmp = stc_out(k);
-                obj             = obj + stagecost_fun(X(:,k),U(:,k),tmp{:});
-                obj             = obj + stagecost_fun(X(:,k),U(:,k),stc_fun(k));
-                f_value         = f(X(:,k),U(:,k));
-                st_next_euler   = integ(X(:,k),opt.dt,f_value);
-                g               = [g; X(:,k+1)-st_next_euler];
-            end
+                for k = 2:opt.N+1
+                obj             = obj + stagecost_fun(X(:,k-1),U(1:opt.n_controls,k-1),sort_param_stc(k));
+                g               = [g; X(:,k)-integ(X(:,k-1),opt.dt,f(X(:,k-1),U(:,k-1)))]; 
+                end
     end
 else % if the model is already discrete
                 for k = 1:opt.N
-                    tmp = stc_out(k);
-                    obj             = obj + stagecost_fun(X(:,k),U(:,k),tmp{:});
+                    obj             = obj + stagecost_fun(X(:,k),U(:,k),sort_param_stc(k));
                     f_value         = f(X(:,k),U(:,k));
                     st_next         = integ(X(:,k),opt.dt,f_value);
                     g               = [g; X(:,k+1)-st_next];
@@ -236,8 +234,8 @@ if isfield(opt,'constraints') && isfield(opt.constraints,'general')
                     size_gc{jj} = size_gc{jj} + length(opt.constraints.general.function{jj}(X(:,i),parameters_gc{:}));
                 end
             case 'end'
-                g = [g; opt.constraints.general.function{jj}(X(:,end-1),parameters_gc{:})]; %why end-1? bc it is x(N)
-                size_gc{jj} = size_gc{jj} +  length(opt.constraints.general.function{jj}(X(:,end-1),parameters_gc{:}));
+                g = [g; opt.constraints.general.function{jj}(X(:,end),vertcat(parameters_gc{:}))]; %why end-1? bc it is x(N)
+                size_gc{jj} = size_gc{jj} +  length(opt.constraints.general.function{jj}(X(:,end),vertcat(parameters_gc{:})));
             case 'all'
                 g = [g; opt.constraints.general.function{jj}(X,parameters_gc{:})]; 
                 size_gc{jj} = size_gc{jj} +  length(opt.constraints.general.function{jj}(X,parameters_gc{:}));
@@ -249,12 +247,12 @@ end
                
 % add terminal constraint variables to the list
 if isfield(opt,'constraints') && isfield(opt.constraints,'terminal')
-    OPT_variables = [reshape(X(:,1:end-1),opt.n_states*opt.N,1);
+    OPT_variables = [reshape(X(:,2:end-1),opt.n_states*opt.N,1);
                     reshape(U,opt.n_controls*opt.N,1);
                     reshape(X(:,end),opt.n_states,1)];
 else
-    OPT_variables   = [reshape(X(:,1:end),opt.n_states*(opt.N+1),1);
-                       reshape(U,opt.n_controls*opt.N,1);];
+    OPT_variables   = [reshape(X(:,2:end),opt.n_states*(opt.N),1);
+                       reshape(U(1:opt.n_controls,:),opt.n_controls*opt.N,1);];
 end
 
 % add extra variables to the list
@@ -268,34 +266,33 @@ end
 Param = [Init_states];
 if isfield(opt,'input')
     if isfield(opt.input,'vector')
-%         Param = [Param; [parameters_input{:}]];
         Param = [Param; vertcat(parameters_input{:})];
     end
 % if there are any input to general constraints
-%     if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'matrix')
-%         aux = [];
-%         for jj = 1:opt.input.general_constraints.matrix.dim(2)
-%             aux = [aux; input_matrix(:,jj)];
-%         end
-%         Param = [Param; aux];
-%     end
-%     
-%     if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'vector')
-%         Param = [Param; input_vector];
-%     end
+    if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'matrix')
+        aux = [];
+        for jj = 1:opt.input.general_constraints.matrix.dim(2)
+            aux = [aux; input_matrix(:,jj)];
+        end
+        Param = [Param; aux];
+    end
+    
+    if isfield(opt.input,'general_constraints') && isfield(opt.input.general_constraints,'vector')
+        Param = [Param; input_vector];
+    end
     
 % if there are any input to stage cost
-%     if isfield(opt.input,'stage_costs') && isfield(opt.input.stage_costs,'matrix')
-%         aux = [];
-%         for jj = 1:opt.input.stage_costs.matrix.dim(2)
-%             aux = [aux; input_matrix(:,jj)];
-%         end
-%         Param = [Param; aux];
-%     end
-%     
-%     if isfield(opt.input,'stage_costs') && isfield(opt.input.stage_costs,'vector')
-%         Param = [Param; input_vector];
-%     end
+    if isfield(opt.input,'stage_costs') && isfield(opt.input.stage_costs,'matrix')
+        aux = [];
+        for jj = 1:opt.input.stage_costs.matrix.dim(2)
+            aux = [aux; input_matrix(:,jj)];
+        end
+        Param = [Param; aux];
+    end
+    
+    if isfield(opt.input,'stage_costs') && isfield(opt.input.stage_costs,'vector')
+        Param = [Param; input_vector];
+    end
     
 end
 
@@ -306,8 +303,8 @@ OPC   = struct('f', obj, 'x', OPT_variables, 'g', g, 'p', Param);
 args = struct;
 
 % equality for x(k+1)-x(k)
-args.lbg(1:opt.n_states*(opt.N+1)) = 0;
-args.ubg(1:opt.n_states*(opt.N+1)) = 0;
+args.lbg(1:opt.n_states*(opt.N)) = 0;
+args.ubg(1:opt.n_states*(opt.N)) = 0;
 
 % if constraints on states are polyhedral
 if isfield(opt.constraints,'polyhedral')
@@ -335,8 +332,7 @@ if isfield(opt.constraints,'general')
     end
 end
 
-%% inequality constraints
-% bounds for the states variables
+%% inequality for the decision variables
 args.lbx = [];
 args.ubx = [];
 
@@ -346,11 +342,11 @@ if isfield(opt.constraints,'terminal')
 end
 
 if isfield(opt.constraints,'polyhedral') || ~isfield(opt,'constraints')
-    args.lbx(1:opt.n_states*(opt.N+aux),1) = -inf;
-    args.ubx(1:opt.n_states*(opt.N+aux),1) = +inf;
+    args.lbx(1:opt.n_states*(opt.N-1+aux),1) = -inf;
+    args.ubx(1:opt.n_states*(opt.N-1+aux),1) = +inf;
 else
-    args.lbx(1:opt.n_states*(opt.N+aux),1) = repmat(opt.constraints.states.lower,opt.N+aux,1);
-    args.ubx(1:opt.n_states*(opt.N+aux),1) = repmat(opt.constraints.states.upper,opt.N+aux,1);
+    args.lbx(1:opt.n_states*(opt.N-1+aux),1) = repmat(opt.constraints.states.lower,opt.N-1+aux,1);
+    args.ubx(1:opt.n_states*(opt.N-1+aux),1) = repmat(opt.constraints.states.upper,opt.N-1+aux,1);
 end
 
 % bounds for variables (controls)
@@ -391,6 +387,7 @@ end
 if (length(g)~=length(args.lbg))
     error('MPC error: Number of constraints(g) and respective bounds (lbg or ubg) are different')
 end
+
 args.vars{1} = OPT_variables;
 args.vars{2} = Param;
 
@@ -398,11 +395,19 @@ args.vars{2} = Param;
 opts                        = struct;
 switch opt.solver
     case 'ipopt'
-        opts.ipopt.max_iter         = 400;
+        opts.ipopt.max_iter         = 200;
         opts.ipopt.print_level      = 0;
         opts.print_time             = 0;
-        opts.ipopt.acceptable_tol   = 1e-8;
-        opts.ipopt.acceptable_obj_change_tol = 1e-8;
+        opts.ipopt.acceptable_tol   = 1e-5;
+        opts.ipopt.acceptable_obj_change_tol = 1e-5;
+        opts.ipopt.acceptable_constr_viol_tol = 1e-6;
+        opts.ipopt.nlp_scaling_method = 'gradient-based';
+        opts.ipopt.constr_viol_tol = 1e-8;  % Reduce constraint violation tolerance
+        opts.ipopt.tol = 1e-8;  % Reduce overall solution tolerance
+        opts.ipopt.dual_inf_tol = 1e-6;  % Reduce dual infeasibility tolerance
+        opts.ipopt.compl_inf_tol = 1e-8;  % Improve complementarity conditions
+        opts.ipopt.bound_push = 1e-10;
+        opts.ipopt.bound_frac = 1e-10;
         solver = nlpsol('solver','ipopt',OPC,opts);
     case 'qpoases'
         options.terminationTolerance = 1e-8;
@@ -412,4 +417,3 @@ switch opt.solver
         solver = qpsol('solver','qpoases',OPC,options);
 end
 
-end
