@@ -234,7 +234,7 @@ if isfield(opt,'constraints') && isfield(opt.constraints,'general')
                     size_gc{jj} = size_gc{jj} + length(opt.constraints.general.function{jj}(X(:,i),parameters_gc{:}));
                 end
             case 'end'
-                g = [g; opt.constraints.general.function{jj}(X(:,end),vertcat(parameters_gc{:}))]; %why end-1? bc it is x(N)
+                g = [g; opt.constraints.general.function{jj}(X(:,end),vertcat(parameters_gc{:}))]; 
                 size_gc{jj} = size_gc{jj} +  length(opt.constraints.general.function{jj}(X(:,end),vertcat(parameters_gc{:})));
             case 'all'
                 g = [g; opt.constraints.general.function{jj}(X,parameters_gc{:})]; 
