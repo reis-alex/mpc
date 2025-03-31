@@ -1,7 +1,7 @@
 
 %% Build an MPC controller using CasADi
 
-function [solver,args] = build_mpc(opt)
+function [solver,args] = build_mpc2(opt)
 import casadi.* 
  
 
@@ -191,36 +191,106 @@ else % if the model is already discrete
                 end
 end
 
+% if terminal cost
+if isfield(opt.costs,'terminal')
+    if isfield(opt.costs,'terminal') && isfield(opt.costs.terminal,'parameters')
+        obj = obj + opt.costs.terminal.function(X(:,end),parameters_trc{:});
+    else
+        obj = obj + opt.costs.terminal.function(X(:,end));
+    end
+end
+
 % if extra cost
 if isfield(opt.costs,'general')
     obj = obj + opt.costs.general.function(X,parameters_gnc{:});
 end
 
-%%
+
+%% Define vector of decision variables and its constraints
+               
+% add terminal constraint variables to the list
+if isfield(opt,'constraints') && isfield(opt.constraints,'terminal')
+    OPT_variables = [reshape(X(:,2:end),opt.n_states*(opt.N),1);
+                    reshape(U,opt.n_controls*opt.N,1)];
+else
+    OPT_variables   = [reshape(X(:,2:end),opt.n_states*(opt.N),1);
+                       reshape(U(1:opt.n_controls,:),opt.n_controls*opt.N,1);];
+end
+
+% add extra (constrained) variables to the list
+if isfield(opt,'constraints') && isfield(opt.constraints,'parameters')
+    OPT_variables   = [OPT_variables; 
+                       parameters_const];
+end
+
+% inequalities for the decision variables
+args = struct;
+args.lbx = [];
+args.ubx = [];
+
+% bounds for variables (states)
+if isfield(opt.constraints,'polyhedral') || ~isfield(opt,'constraints')
+    args.lbx(1:opt.n_states*(opt.N),1) = -inf;
+    args.ubx(1:opt.n_states*(opt.N),1) = +inf;
+else
+    args.lbx(1:opt.n_states*(opt.N),1) = repmat(opt.constraints.states.lower,opt.N,1);
+    args.ubx(1:opt.n_states*(opt.N),1) = repmat(opt.constraints.states.upper,opt.N,1);
+end
+
+% bounds for variables (controls)
+if isfield(opt.constraints,'control')
+        args.lbx(length(args.lbx)+1:length(args.lbx)+opt.n_controls*opt.N,1) = repmat(opt.constraints.control.lower,opt.N,1);
+        args.ubx(length(args.ubx)+1:length(args.ubx)+opt.n_controls*opt.N,1) = repmat(opt.constraints.control.upper,opt.N,1);
+else
+        args.lbx(length(args.lbx)+1:opt.n_states*opt.N+opt.n_controls*opt.N,1) = -inf;
+        args.ubx(length(args.ubx)+1:opt.n_states*opt.N+opt.n_controls*opt.N,1) = +inf;
+end
+
+% % bounds for variables (X(N))
+% if isfield(opt,'constraints') && isfield(opt.constraints,'terminal')
+%     if isfield(opt.constraints.terminal,'set')
+%         args.ubx(length(args.ubx)+1:length(args.ubx)+opt.n_states) = +inf;
+%         args.lbx(length(args.lbx)+1:length(args.lbx)+opt.n_states) = -inf;
+%     else
+%         args.ubx(length(args.ubx)+1:length(args.ubx)+opt.n_states) = opt.constraints.states.upper;
+%         args.lbx(length(args.lbx)+1:length(args.lbx)+opt.n_states) = opt.constraints.states.lower;
+%     end
+%     
+% end
+
+% bounds for extra variables
+if isfield(opt,'constraints') && isfield(opt.constraints,'parameters')
+    if isfield(opt.constraints.parameters,'lower')
+        args.ubx(length(args.ubx)+1:length(args.ubx)+length(parameters_const)) = opt.constraints.parameters.upper;
+        args.lbx(length(args.lbx)+1:length(args.lbx)+length(parameters_const)) = opt.constraints.parameters.lower;
+    else
+        args.ubx(length(args.ubx)+1:length(args.ubx)+length(parameters_const)) = +inf;
+        args.lbx(length(args.lbx)+1:length(args.lbx)+length(parameters_const)) = -inf;
+    end
+end
+
+if (length(OPT_variables)~=length(args.lbx))
+    error('MPC error: Number of variables and respective bounds are different')
+end
+
+
+%% Define functional constraints (lbg<=g(x)<=ubg)
+
 % if constraints in states are polyhedral
 if isfield(opt,'constraints') && isfield(opt.constraints,'polyhedral')
-    if ~isfield(opt.constraints,'terminal')
         for i = 1:opt.N+1
             g = [g; opt.constraints.polyhedral.A*X(:,i)-opt.constraints.polyhedral.b];
         end
-    else 
-        for i = 1:opt.N
-            g = [g; opt.constraints.polyhedral.A*X(:,i)-opt.constraints.polyhedral.b];
-        end
-    end
 end
 
 % if terminal costs and constraints
 if isfield(opt,'constraints') && isfield(opt.constraints,'terminal') && isfield(opt.constraints.terminal,'parameters')
     g   = [g; opt.constraints.terminal.set.A*vertcat(X(:,end),parameters_tc)-opt.constraints.terminal.set.b];
-    obj = obj + opt.costs.terminal.function(X(:,end),parameters_trc{:});
 else
     if isfield(opt,'constraints') && isfield(opt.constraints,'terminal')
         g   = [g; opt.constraints.terminal.set.A*X(:,end)-opt.constraints.terminal.set.b];
-        obj = obj + opt.costs.terminal.function(X(:,end));
     end
 end
-
 
 % if there are general constraints
 if isfield(opt,'constraints') && isfield(opt.constraints,'general')
@@ -241,24 +311,6 @@ if isfield(opt,'constraints') && isfield(opt.constraints,'general')
                 size_gc{jj} = size_gc{jj} +  length(opt.constraints.general.function{jj}(X,parameters_gc{:}));
         end
     end
-end
-
-%% Define vector of decision variables
-               
-% add terminal constraint variables to the list
-if isfield(opt,'constraints') && isfield(opt.constraints,'terminal')
-    OPT_variables = [reshape(X(:,2:end-1),opt.n_states*(opt.N-1),1);
-                    reshape(U,opt.n_controls*opt.N,1);
-                    reshape(X(:,end),opt.n_states,1)];
-else
-    OPT_variables   = [reshape(X(:,2:end),opt.n_states*(opt.N),1);
-                       reshape(U(1:opt.n_controls,:),opt.n_controls*opt.N,1);];
-end
-
-% add extra variables to the list
-if isfield(opt,'constraints') && isfield(opt.constraints,'parameters')
-    OPT_variables   = [OPT_variables; 
-                       parameters_const];
 end
 
 %% define external parameters and problem structure
@@ -300,7 +352,6 @@ OPC   = struct('f', obj, 'x', OPT_variables, 'g', g, 'p', Param);
 
 %% Constraints
 % define equality constraints 
-args = struct;
 
 % equality for x(k+1)-x(k)
 args.lbg(1:opt.n_states*(opt.N)) = 0;
@@ -332,65 +383,18 @@ if isfield(opt.constraints,'general')
     end
 end
 
-%% inequality for the decision variables
-args.lbx = [];
-args.ubx = [];
-
-aux = 1;
-if isfield(opt.constraints,'terminal')
-   aux = 0; 
-end
-
-if isfield(opt.constraints,'polyhedral') || ~isfield(opt,'constraints')
-    args.lbx(1:opt.n_states*(opt.N-1+aux),1) = -inf;
-    args.ubx(1:opt.n_states*(opt.N-1+aux),1) = +inf;
-else
-    args.lbx(1:opt.n_states*(opt.N-1+aux),1) = repmat(opt.constraints.states.lower,opt.N-1+aux,1);
-    args.ubx(1:opt.n_states*(opt.N-1+aux),1) = repmat(opt.constraints.states.upper,opt.N-1+aux,1);
-end
-
-% bounds for variables (controls)
-if isfield(opt.constraints,'control')
-        args.lbx(length(args.lbx)+1:length(args.lbx)+opt.n_controls*opt.N,1) = repmat(opt.constraints.control.lower,opt.N,1);
-        args.ubx(length(args.ubx)+1:length(args.ubx)+opt.n_controls*opt.N,1) = repmat(opt.constraints.control.upper,opt.N,1);
-else
-        args.lbx(length(args.lbx)+1:opt.n_states*opt.N+opt.n_controls*opt.N,1) = -inf;
-        args.ubx(length(args.ubx)+1:opt.n_states*opt.N+opt.n_controls*opt.N,1) = +inf;
-end
-
-% bounds for variables (X(N))
-if isfield(opt,'constraints') && isfield(opt.constraints,'terminal')
-    if isfield(opt.constraints.terminal,'set')
-        args.ubx(length(args.ubx)+1:length(args.ubx)+opt.n_states) = +inf;
-        args.lbx(length(args.lbx)+1:length(args.lbx)+opt.n_states) = -inf;
-    else
-        args.ubx(length(args.ubx)+1:length(args.ubx)+opt.n_states) = opt.constraints.states.upper;
-        args.lbx(length(args.lbx)+1:length(args.lbx)+opt.n_states) = opt.constraints.states.lower;
-    end
-    
-end
-
-% bounds for extra variables
-if isfield(opt,'constraints') && isfield(opt.constraints,'parameters')
-    if isfield(opt.constraints.parameters,'lower')
-        args.ubx(length(args.ubx)+1:length(args.ubx)+length(parameters_const)) = opt.constraints.parameters.upper;
-        args.lbx(length(args.lbx)+1:length(args.lbx)+length(parameters_const)) = opt.constraints.parameters.lower;
-    else
-        args.ubx(length(args.ubx)+1:length(args.ubx)+length(parameters_const)) = +inf;
-        args.lbx(length(args.lbx)+1:length(args.lbx)+length(parameters_const)) = -inf;
-    end
-end
-
-if (length(OPT_variables)~=length(args.lbx))
-    error('MPC error: Number of variables and respective bounds are different')
-end
 if (length(g)~=length(args.lbg))
     error('MPC error: Number of constraints(g) and respective bounds (lbg or ubg) are different')
 end
-
+names = {};
+aux = [];
+for i = 1:length(OPT_variables)
+    aux = OPT_variables(i);
+    names{i} = aux.name;
+end
 args.vars{1} = OPT_variables;
 args.vars{2} = Param;
-
+args.vars{3} = find(strcmp(names,'U_0'));web
 %% generate solver
 opts                        = struct;
 switch opt.solver
