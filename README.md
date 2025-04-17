@@ -247,7 +247,10 @@ One can parametrize the input regarding a number of allowed control moves (that 
 * ```opt.input_parametrization.nb_moves```: defines the number of allowed control moves.
 * ```opt.input_parametrization.function```: defines the function that will parametrize the allowed control moves. This option must be a function handle of the input (_i.e._, ```@(u)```).
 
-_Example (input moving blocks)_ : suppose one wants to, instead of allowing _N_ control moves, impose $N_c<N$ blocks of constant control moves, _i.e._, $u=\lbrace \underbrace{u_0,\dots,u_0}_{N_c},\underbrace{u_1,\dots,u_1}_{N_c},\dots\rbrace$.
+_Example (input moving blocks)_ : suppose one wants to, instead of allowing _N_ control moves, impose $N_c<N$ blocks of constant control moves, _i.e._, 
+\begin{equation*}
+u=\lbrace \underbrace{u_0,\dots,u_0}_{N_c},\underbrace{u_1,\dots,u_1}_{N_c},\dots\rbrace
+\end{equation*}
 
 ```matlab
 opt.input_parametrization.nb_moves = 10;
