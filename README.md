@@ -247,12 +247,12 @@ One can parametrize the input regarding a number of allowed control moves (that 
 * ```opt.input_parametrization.nb_moves```: defines the number of allowed control moves.
 * ```opt.input_parametrization.function```: defines the function that will parametrize the allowed control moves. This option must be a function handle of the input (_i.e._, ```@(u)```).
 
-_Example (input moving blocks)_ : suppose one wants to, instead of allowing _N_ control moves, impose $N_c<N$ blocks of constant control moves, _i.e._, 
+_Example (input moving blocks)_ : suppose one wants to, instead of allowing _N_ control moves, impose $N/N_c$ blocks of constant control moves, _i.e._, 
 
 
 $$
 \begin{equation*}
-u=\{ \underbrace{u_0,\dots,u_0}{N_c},\underbrace{u_1,\dots,u_1}{N_c},\dots \}
+u=\{ \underbrace{{\underbrace{u_0,\dots,u_0}_{N_c \text{elements}}},{\underbrace{u_1,\dots,u_1}_{N_c \text{elements}}},\dots \}
 \end{equation*}
 $$
 
