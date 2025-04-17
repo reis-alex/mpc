@@ -251,7 +251,9 @@ _Example (input moving blocks)_ : suppose one wants to, instead of allowing _N_ 
 
 
 $$
+\begin{equation*}
 u=\{ \underbrace{u_0,\dots,u_0}_{N_c},\underbrace{u_1,\dots,u_1}_{N_c},\dots \}
+\end{equation*}
 $$
 
 ```matlab
