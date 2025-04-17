@@ -12,8 +12,8 @@ The routine _mpc_build_ is written to build a generic MPC formulation with CasAD
 4. Costs
 	1. [Stage Costs](#Stage-costs)
 	2. [Terminal Costs](#Terminal-costs)
-5. [Extra Options] (#Extra-Options)
-	1. [Input Parametrization] (#Input-Parametrization)
+5. [Extra Options](#Extra-Options)
+	1. [Input Parametrization](#Input-Parametrization)
 
 
 Some examples are available.
