@@ -252,7 +252,7 @@ _Example (input moving blocks)_ : suppose one wants to, instead of allowing _N_ 
 
 $$
 \begin{equation*}
-u=\{ \underbrace{{\underbrace{u_0,\dots,u_0}_{N_c \text{elements}}},{\underbrace{u_1,\dots,u_1}_{N_c \text{elements}}},\dots \}
+u=\{ {\underbrace{u_0,\dots,u_0}_{N_c \text{elements}}},{\underbrace{u_1,\dots,u_1}_{N_c \text{elements}}},\dots \}
 \end{equation*}
 $$
 
