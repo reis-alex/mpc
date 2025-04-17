@@ -239,7 +239,7 @@ end
 opt.parameters.dim = vertcat(repmat([opt.n_states, 1],opt.N,1));
 opt.costs.stage.parameters = opt.parameters.name;
 opt.costs.stage.sort_parameter.var = [1:opt.N];
-opt.costs.stage.function = @(x,u,varargin)  (x-varargin{:}(3:8))'*Q*(x-varargin{:}(3:8)) + u'*R*u;
+opt.costs.stage.function = @(x,u,varargin)  (x-varargin{:})'*Q*(x-varargin{:}) + u'*R*u;
 ```
 
 #### Terminal costs
