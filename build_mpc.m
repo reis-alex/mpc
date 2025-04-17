@@ -1,7 +1,7 @@
 
 %% Build an MPC controller using CasADi
 
-function [solver,args] = build_mpc2(opt)
+function [solver,args] = build_mpc(opt)
 import casadi.* 
  
 
