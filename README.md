@@ -189,12 +189,25 @@ These terms relate to state and control variables at each step over the predicti
 
 * The stage cost function is provided through _opt.costs.stage.function_, which takes a function handle as arguments. This handle takes arguments @(x,u,varargin).
 * If any other parameters (supposedly decision variables for the optimization problem) are considered in the stage cost function, it should be listed in the field _opt.costs.stage.parameters_.
+* It is possible to sort the parameters if they are time-indexed over the prediction horizon. The options ```opt.costs.stage.sort_parameter.var``` and ``opt.costs.stage.sort_parameter.fixed```allow, respectively, to indicate which parameters (in the order listed in ```opt.costs.stage.parameters```) are indexed (_i.e._, depend on $k$) or fixed (_i.e_, does not depend on $k$).
 
-Example: consider the classical linear-quadratic cost for tracking a user-input reference $p$ with a (constant) repulsion term regarding $\sigma$:
+_Important remark:_ ```opt.parameters.name``` relates to ```varargin``` as a list. Therefore, if several parameters are declared to the cost function, in different elements, they should be referred to cardinaly, for instance:
+
+```matlab
+
+opt.parameters.name = {'xs', 'us'};
+opt.parameters.dim = [opt.n_states 1; opt.n_controls 1];
+opt.costs.stage.function = @(x,u,varargin) (x-varargin{:}(1:opt.n_states))'*Q*(x-varargin{:}(1:opt.n_states)) + (opt.n_states+1:end)'*R*(opt.n_states+1:end);
+opt.costs.stage.parameters = {'xs', 'us'};
+```
+In the example above, $x_s$ and $u_s$ are both decision variables that appear in the cost function. To properly associate these variables with $x$ and $u$, the correct indices (```1:opt.n_states```and ```opt.n_states+1:end```, respectively), needed to be added. 
+
+
+_Example (minimizating w.r.t to a point reference)_: consider the classical linear-quadratic cost for tracking a user-input reference $p$ with a (constant) repulsion term regarding $\sigma$:
 
 $$
 \begin{equation*}
-V(x_k,u_k) = \sum_{i=1}^{N-1} (x_k-p_k)^\top Q (x_k-p_k) + u_k^\top R u_k + 100*(x_k-\sigma)^2
+V(x_k,u_k) = \sum_{i=1}^{N-1} (x_k-p)^\top Q (x_k-p) + u_k^\top R u_k + 100*(x_k-\sigma)^2
 \end{equation*}
 $$
 ```matlab
@@ -208,17 +221,26 @@ opt.costs.stage.function = @(x,u,varargin) (x-varargin{:})'*Q*(x-varargin{:}) + 
 opt.costs.stage.parameters = {'p'};
 ```
 
-_Important remark:_ ```opt.parameters.name``` relates to ```varargin``` as a list. Therefore, if several parameters are declared to the cost function, in different elements, they should be referred to cardinaly, for instance:
+_Example (minimizating w.r.t to a window of references, "preview control")_: if, instead of a single point reference, several future references are known (for instance, a trajectory to be followed), it can be used in the cost function as
+
+$$
+\begin{equation*}
+V(x_k,u_k) = \sum_{i=1}^{N-1} (x_k-p_k)^\top Q (x_k-p_k) + u_k^\top R u_k
+\end{equation*}
+$$
+
+since $p_k$ is indexed by $k$ over the whole prediction horizon, one would have:
 
 ```matlab
-
-opt.parameters.name = {'xs', 'us'};
-opt.parameters.dim = [opt.n_states 1; opt.n_controls 1];
-opt.costs.stage.function = @(x,u,varargin) (x-varargin{:}(1:opt.n_states))'*Q*(x-varargin{:}(1:opt.n_states)) + (opt.n_states+1:end)'*R*(opt.n_states+1:end);
-opt.costs.stage.parameters = {'xs', 'us'};
+% Define parameters for the whole reference window
+for i = 1:opt.N
+    opt.parameters.name{i} = ['Ref' int2str(i)];
+end
+opt.parameters.dim = vertcat(repmat([opt.n_states, 1],opt.N,1));
+opt.costs.stage.parameters = opt.parameters.name;
+opt.costs.stage.sort_parameter.var = [1:opt.N];
+opt.costs.stage.function = @(x,u,varargin)  (x-varargin{:}(3:8))'*Q*(x-varargin{:}(3:8)) + u'*R*u;
 ```
-In the example above, $x_s$ and $u_s$ are both decision variables that appear in the cost function. To properly associate these variables with $x$ and $u$, the correct indices (```1:opt.n_states```and ```opt.n_states+1:end```, respectively), needed to be added. 
-
 
 #### Terminal costs
 
