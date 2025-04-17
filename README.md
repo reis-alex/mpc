@@ -250,7 +250,7 @@ One can parametrize the input regarding a number of allowed control moves (that 
 _Example (input moving blocks)_ : suppose one wants to, instead of allowing _N_ control moves, impose $N/N_c$ blocks of constant control moves, _i.e._, 
 
 $$ \underbrace{u_0,\dots,u_0}_{lol}$$ 
-$\underbrace{u_0,\dots,u_0}_{N_c \text{elements}}$
+$\underbrace{u_0,\dots,u_0}_{N \text{elements}}$
 
 $$
 \begin{equation*}
