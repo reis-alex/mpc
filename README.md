@@ -70,25 +70,31 @@ Parameters are any decision variable to the optimization problem, or any input t
 * ```opt.parameters.name```: holds the name of all parameters, independently of where they will appear in the MPC structure.
 * ```opt.parameters.dim```: holds the dimension of each parameter, in the order they apppear in ```opt.parameters.name```. If the parameter is a vector, the dimension expected is ```[rows 1]```, whereas if it is a matrix, ```[rows columns]```.
 
-Example: let the parameters be four decision variables: $x_s\in\mathbb{R}^2$,  $u_s\in\mathbb{R}$, _ref_$\in\mathbb{R}^2$, $b\in\mathbb{R}^10$, and $A\in\mathbb{R}^{10\times 2}$.
+Example: let the parameters be four decision variables: $x_s\in\mathbb{R}^2$,  $u_s\in\mathbb{R}$, _ref_$\in\mathbb{R}^2$, $b\in\mathbb{R}^{10}$, and $A\in\mathbb{R}^{10\times 2}$.
 
 ```matlab
 opt.parameters.name = {'xs','us','ref','b','A'};
 opt.parameters.dim = [2 1; 1 1; 2 1; 10 1; 10 2];
 ```
 
-Later, to introduce these variables in the MPC (_e.g., in constraints or cost functions), one will just refer to the names listed in ``opt.parameters.name``. *Important:* if any parameter is to be used in constraints, they should be listed in the field ```opt.constraints.parameters.variables``` (see below).
+Later, to introduce these variables in the MPC (_e.g._, in constraints or cost functions), one will just refer to the names listed in ``opt.parameters.name``.
+
+*Important:* if any parameter is to be used in constraints, they should be listed in the field ```opt.constraints.parameters.variables``` (see below).
 
 ### Constraints
 
+The field _opt.constraints_ gathers all types of the constraints that can be imposed to the MPC problem.
+
 #### Constrained parameters
 
-* ```opt.constraints.parameters.variables```: gathers all parameters/decision variables that appear, somehow, in constraints.
+* ```opt.constraints.parameters.variables```: gathers the names of all parameters/decision variables that appear, somehow, in constraints.
+* ```opt.constraints.parameters.upper``` and ```opt.constraints.parameters.lower```: upper lower bounds, respectively, for the parameters listed above.
+
+*Important:* any parameter not being an input to the MPC should figure in this list and have respective bounds assigned. Otherwise, CasADI will display an error saying that there are "free" decision variables.
 
 
 #### Bound constraints
 
-The field _opt.constraints_ gathers the constraints to be imposed to the optimization problem.
 
 * ```opt.constraints.state.upper``` and ```opt.constraints.state.lower```: variable-wise, upper and lower bounds for the states. The expected argument are vectors with the dimensions ```opt.n_states```.
 * ```opt.constraints.controls.upper``` and ```opt.constraints.controls.lower```: variable-wise, upper and lower bounds for the control inputs. The expected argument are vectors with the dimensions ```opt.n_controls```.
@@ -115,7 +121,7 @@ b = ones(opt.n_states*2,1);
 opt.constraints.polyhedral.set.A = A;
 opt.constraints.polyhedral.set.b = b;
 ```
-or, equivalently, if one uses the [MPT3 toolbox](https://www.mpt3.org/) (this might simplifying plotting the constraint set later):
+or, equivalently, if one uses the [MPT3 toolbox](https://www.mpt3.org/) (this might simplify plotting the constraint set later):
 ```matlab
 X = Polyhedron('A',vertcat(eye(opt.n_states),-eye(opt.n_states)),'b',ones(opt.n_states*2,1));
 opt.constraints.polyhedral.set = X;
@@ -135,27 +141,42 @@ Example: consider a terminal constraint to be $x_N\in\Omega$, where $\Omega$ is 
 opt.constraints.terminal.set.A = Omega.A;
 opt.constraints.terminal.set.b = Omega.b;
 ```
-Note that it can be similarly done using a Polyhedron object (see Section _Constraints_ above).
+Note that it can be similarly done using a Polyhedron object (see Section _Polyhedral constraints_ above).
 
 
 #### General constraints
 
-One can also define (multiple) general constraints, for instance, as nonlinear functions of the state, or dependent on external parameters (therefore, time-varying). The corresponding fields are:
+One can also define (multiple) general constraints, for instance, as nonlinear functions of the state and inputs, or dependent on external parameters (therefore, time-varying). The corresponding fields are:
 
-* ```opt.constraints.general.parameters```: list of all parameters used in the general constraints, if any.
+* ```opt.constraints.general.parameters```: list of all parameters used in the general constraints, if any. These parameters should be listed in _opt.parameters.names_ and have its dimensions assigned in _opt.parameters.dim_.
 * ```opt.constraints.general.function{i}```: holds the function describing the constraint. 
-* ```opt.constraints.general.elements{i}```: indicate which elements of the predicted states are taken into account in the general constraint. It can be either ``` 'end' ```, for only the last predicted state, or ``` 'N' ```, for all the instances of the predicted states.
 * ```opt.constraints.general.type{i}```: indicate if the constraint is an ``` 'equality' ``` or an ``` 'inequality' ```.
 
-*Important remark:* note that some of the fields above *are arrays*, therefore ```{i}``` should be a integer number describing cardinality, starting from 1.
+*Important remark:* 
+* Note that some of the fields above *are arrays*, therefore ```{i}``` should be a integer number describing cardinality, starting from 1.
+* The function described in  ```opt.constraints.general.function{i}``` must be a function handle of the states, the inputs, and the parameters (_i.e_, ```@(x,u,varargin)```).
+
+*Example* (end-point terminal constraint): let $p\in\mathbb{R}^n$ be a reference to be followed. To impose $x(N)=p$, one should add
+
+```matlab
+opt.constraints.general.parameters  = {'p'}
+opt.constraints.general.function{1} = @(x,u,varargin) x(:,end)-varargin{1};
+opt.constraints.general.type{1} = 'equality';
+```
 
 *Example* (non-linear constraint): suppose $x\in\mathbb{R}^2$ and define a nonlinear constraint such as $x_1^2 + x_2^2 - p \leq 1$:
 
 ```matlab
 opt.constraints.general.parameters  = {'p'}
-opt.constraints.general.function{1} = @(x,varargin) x(1)^2+x(2)^2-varargin{1}-1;
-opt.constraints.general.elements{1} = 'N';
-opt.constraints.general.type{1} = 'equality';
+opt.constraints.general.function{1} = @(x,u,varargin) x(1)^2+x(2)^2-varargin{1}-1;
+opt.constraints.general.type{1} = 'inequality';
+```
+
+*Example* (bounds on control variation) let a constraint be added such that $\vert u_{k+1}-u_k\vert\leq 1$:
+
+```matlab
+opt.constraints.general.function{1} = @(x,u,varargin) vertcat(diff(u)-1, -diff(u)-1);
+opt.constraints.general.type{1} = 'inequality';
 ```
 
 ### Cost functions
