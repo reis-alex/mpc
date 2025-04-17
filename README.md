@@ -190,7 +190,7 @@ These terms relate to state and control variables at each step over the predicti
 
 * The stage cost function is provided through _opt.costs.stage.function_, which takes a function handle as arguments. This handle takes arguments @(x,u,varargin).
 * If any other parameters (supposedly decision variables for the optimization problem) are considered in the stage cost function, it should be listed in the field _opt.costs.stage.parameters_.
-* It is possible to sort the parameters if they are time-indexed over the prediction horizon. The options ```opt.costs.stage.sort_parameter.var``` and ``opt.costs.stage.sort_parameter.fixed```allow, respectively, to indicate which parameters (in the order listed in ```opt.costs.stage.parameters```) are indexed (_i.e._, depend on $k$) or fixed (_i.e_, does not depend on $k$).
+* It is possible to sort the parameters if they are time-indexed over the prediction horizon. The options ```opt.costs.stage.sort_parameter.var``` and ```opt.costs.stage.sort_parameter.fixed``` allow, respectively, to indicate which parameters (in the order listed in ```opt.costs.stage.parameters```) are indexed (_i.e._, depend on $k$) or fixed (_i.e_, does not depend on $k$).
 
 _Important remark:_ ```opt.parameters.name``` relates to ```varargin``` as a list. Therefore, if several parameters are declared to the cost function, in different elements, they should be referred to cardinaly, for instance:
 
