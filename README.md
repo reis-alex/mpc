@@ -133,7 +133,7 @@ opt.constraints.polyhedral.set = X;
 	* polyhedron (as above), passed directly through the field ```opt.constraints.terminal.set```
 	* matrices $A$ and $b$, to be passed through the fields ```opt.constraints.terminal.set.A``` and ```opt.constraints.terminal.set.b```
 
-* opt.constraints.terminal.parameters```: used if any other parameter/decision variable is to be used in the terminal constraint.
+* ```opt.constraints.terminal.parameters```: used if any other parameter/decision variable is to be used in the terminal constraint.
 
 Example: consider a terminal constraint to be $x_N\in\Omega$, where $\Omega$ is a polyhedral set described such as $\Omega.A*x(N)\leq \Omega.b$.
 
@@ -160,7 +160,7 @@ One can also define (multiple) general constraints, for instance, as nonlinear f
 
 ```matlab
 opt.constraints.general.parameters  = {'p'}
-opt.constraints.general.function{1} = @(x,u,varargin) x(:,end)-varargin{1};
+opt.constraints.general.function{1} = @(x,u,varargin) x(:,end)-varargin{:};
 opt.constraints.general.type{1} = 'equality';
 ```
 
@@ -168,7 +168,7 @@ opt.constraints.general.type{1} = 'equality';
 
 ```matlab
 opt.constraints.general.parameters  = {'p'}
-opt.constraints.general.function{1} = @(x,u,varargin) x(1)^2+x(2)^2-varargin{1}-1;
+opt.constraints.general.function{1} = @(x,u,varargin) x(1)^2+x(2)^2-varargin{:}-1;
 opt.constraints.general.type{1} = 'inequality';
 ```
 
@@ -188,7 +188,7 @@ These terms relate to state and control variables at each step over the predicti
 * The stage cost function is provided through _opt.costs.stage.function_, which takes a function handle as arguments. This handle takes arguments @(x,u,varargin).
 * If any other parameters (supposedly decision variables for the optimization problem) are considered in the stage cost function, it should be listed in the field _opt.costs.stage.parameters_.
 
-Example: consider the classical linear-quadratic cost for tracking a user-input reference $p$ with a repulsion term regarding $\sigma$:
+Example: consider the classical linear-quadratic cost for tracking a user-input reference $p$ with a (constant) repulsion term regarding $\sigma$:
 
 $$
 \begin{equation*}
@@ -205,6 +205,18 @@ R = eye(opt.n_controls);
 opt.costs.stage.function = @(x,u,varargin) (x-varargin{:})'*Q*(x-varargin{:}) + u'*R*u + 100*(x-\sigma)^2 ;
 opt.costs.stage.parameters = {'p'};
 ```
+
+_Important remark:_ ```opt.parameters.name``` relates to ```varargin``` as a list. Therefore, if several parameters are declared to the cost function, in different elements, they should be referred to cardinaly, for instance:
+
+```matlab
+
+opt.parameters.name = {'xs', 'us'};
+opt.parameters.dim = [opt.n_states 1; opt.n_controls 1];
+opt.costs.stage.function = @(x,u,varargin) (x-varargin{:}(1:opt.n_states))'*Q*(x-varargin{:}(1:opt.n_states)) + (opt.n_states+1:end)'*R*(opt.n_states+1:end);
+opt.costs.stage.parameters = {'p'};
+```
+In the example above, $x_s$ and $u_s$ are both decision variables that appear in the cost function. To properly associate these variables with $x$ and $u$, the correct indices (```1:opt.n_states```and ```opt.n_states+1:end```, respectively), needed to be added. 
+
 
 #### Terminal costs
 
