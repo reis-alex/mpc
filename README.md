@@ -12,6 +12,8 @@ The routine _mpc_build_ is written to build a generic MPC formulation with CasAD
 4. Costs
 	1. [Stage Costs](#Stage-costs)
 	2. [Terminal Costs](#Terminal-costs)
+5.  [Extra options] Extra options
+	1. [Input Parametrization] Input Parametrization
 
 
 Some examples are available.
@@ -213,7 +215,7 @@ _Important remark:_ ```opt.parameters.name``` relates to ```varargin``` as a lis
 opt.parameters.name = {'xs', 'us'};
 opt.parameters.dim = [opt.n_states 1; opt.n_controls 1];
 opt.costs.stage.function = @(x,u,varargin) (x-varargin{:}(1:opt.n_states))'*Q*(x-varargin{:}(1:opt.n_states)) + (opt.n_states+1:end)'*R*(opt.n_states+1:end);
-opt.costs.stage.parameters = {'p'};
+opt.costs.stage.parameters = {'xs', 'us'};
 ```
 In the example above, $x_s$ and $u_s$ are both decision variables that appear in the cost function. To properly associate these variables with $x$ and $u$, the correct indices (```1:opt.n_states```and ```opt.n_states+1:end```, respectively), needed to be added. 
 
@@ -236,4 +238,24 @@ opt.costs.terminal.parameters = {'xs','Ref'};
 opt.costs.terminal.function = @(x,varargin) (x-varargin{:}(1:4))'*P*(x-varargin{:}(1:4)) + (varargin{:}(1:4)-varargin{:}(5:8))'*T*(varargin{:}(1:4)-varargin{:}(5:8))
 ```
 
-#### General costs
+### Extra options
+
+#### Input Parametrization
+
+One can parametrize the input regarding a number of allowed control moves (that can be different than ```opt.N```). The options are:
+
+* ```opt.input_parametrization.nb_moves```: defines the number of allowed control moves.
+* ```opt.input_parametrization.function```: defines the function that will parametrize the allowed control moves. This option must be a function handle of the input (_i.e._, ```@(u)```).
+
+_Example (input moving blocks)_ : suppose one wants to, instead of allowing _N_ control moves, impose $N_c<N$ blocks of constant control moves, _i.e._, $u=\lbrace \underbrace{u_0,\dots,u_0}_{N_c},\underbrace{u_1,\dots,u_1}_{N_c},\dots\rbrace$.
+
+```matlab
+opt.input_parametrization.nb_moves = 10;
+div = opt.N/opt.input_parametrization.nb_moves;
+tfun = @(u) [];
+
+for i = 1:opt.input_parametrization.nb_moves 
+   tfun = @(u) [tfun(u) u(:,i).*ones(opt.n_controls,div)];
+end
+opt.input_parametrization.function = @(u) tfun(u);
+```
