@@ -13,7 +13,8 @@ The routine _mpc_build_ is written to build a generic MPC formulation with CasAD
 	1. [Stage Costs](#Stage-costs)
 	2. [Terminal Costs](#Terminal-costs)
 5. [Extra Options](#Extra-Options)
-	1. [Input Parametrization](#Input-Parametrization)
+	1. [User Inputs](#User-Inputs)
+	2. [Control Parametrization](#Control-Parametrization)
 
 
 Some examples are available.
@@ -211,7 +212,6 @@ V(x_k,u_k) = \sum_{i=1}^{N-1} (x_k-p)^\top Q (x_k-p) + u_k^\top R u_k + 100*(x_k
 \end{equation*}
 $$
 ```matlab
-p = [10;10];
 sigma = [5;5]; 
 opt.parameters.name = {'p'};
 opt.parameters.dim = [opt.n_states 1];
@@ -262,14 +262,21 @@ opt.costs.terminal.function = @(x,varargin) (x-varargin{:}(1:4))'*P*(x-varargin{
 
 ### Extra Options
 
-#### Input Parametrization
+#### User Inputs
+
+The (user given) inputs must be declared in the parameter list (```opt.parameters.name``` and ```opt.parameters.dim```), and either in
+
+* ```opt.input.vector```: for all variables that are either scalars or vectors.
+* ```opt.input.matrix```: for all variables that are two-dimensional (matrices). Although this argument is a matrix, it should be passed to _build_mpc_ as a vector composed by the vertical concatenation of its columns (use the function _reshape_).
+
+#### Control Parametrization
 
 One can parametrize the input regarding a number of allowed control moves (that can be different than ```opt.N```). The options are:
 
 * ```opt.input_parametrization.nb_moves```: defines the number of allowed control moves.
 * ```opt.input_parametrization.function```: defines the function that will parametrize the allowed control moves. This option must be a function handle of the input (_i.e._, ```@(u)```).
 
-_Example (input moving blocks)_ : suppose one wants to, instead of allowing _N_ control moves, impose $N/N_c$ blocks of constant control moves, _i.e._, 
+_Example (input moving blocks)_ : suppose one wants to, instead of allowing _N_ control moves, impose $\frac{N}{N_c}$ blocks of constant control moves, _i.e._, 
 
 
 $$ 
